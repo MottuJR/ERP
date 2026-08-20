@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:panaderia_erp}
+    username: ${POSTGRES_USER:panaderia}
+    password: ${POSTGRES_PASSWORD:panaderia_dev_pw}
+  jpa:
+    show-sql: true
+
+app:
+  jwt:
+    # Solo para desarrollo local. En producción SIEMPRE se define via variable de entorno JWT_SECRET.
+    secret: ${JWT_SECRET:dev-only-secret-do-not-use-in-production-change-me-please-32}
