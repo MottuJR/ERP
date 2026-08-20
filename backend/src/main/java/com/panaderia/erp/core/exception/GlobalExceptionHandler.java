@@ -1,4 +1,4 @@
-package com.panaderia.erp.auth.exception;
+package com.panaderia.erp.core.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,9 +31,19 @@ public class GlobalExceptionHandler {
         return errorResponse(HttpStatus.FORBIDDEN, "No tenés permisos para esta acción");
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleRecursoNoEncontrado(RecursoNoEncontradoException ex) {
+        return errorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(ConflictoException.class)
+    public ResponseEntity<Map<String, Object>> handleConflicto(ConflictoException ex) {
         return errorResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(ValidacionNegocioException.class)
+    public ResponseEntity<Map<String, Object>> handleValidacionNegocio(ValidacionNegocioException ex) {
+        return errorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -1,6 +1,6 @@
 # ERP Panadería — Backend
 
-Fase 0 del roadmap: proyecto Spring Boot base, conexión a Postgres vía Flyway, y módulo de autenticación (usuarios, roles, login con JWT).
+Fase 0 (setup: proyecto base, Postgres vía Flyway, autenticación JWT) y Fase 1 (Productos, Inventario, Caja, Ventas/POS) del roadmap.
 
 ## Stack
 
@@ -54,9 +54,43 @@ Para los endpoints protegidos, mandar el JWT en el header:
 Authorization: Bearer <token>
 ```
 
+## Endpoints de productos e inventario
+
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/categorias` | autenticado | Lista categorías |
+| POST/PUT | `/api/categorias` | `DUENO`/`ENCARGADO` | Alta/edición de categoría |
+| GET | `/api/productos` | autenticado | Lista productos activos |
+| GET | `/api/productos/{id}` | autenticado | Detalle de un producto |
+| GET | `/api/productos/codigo/{codigo}` | autenticado | Busca por código de barras fijo |
+| POST/PUT/DELETE | `/api/productos/**` | `DUENO`/`ENCARGADO` | Alta/edición/baja (soft-delete) |
+| GET | `/api/inventario/insumos` | autenticado | Lista insumos |
+| POST | `/api/inventario/insumos` | `DUENO`/`ENCARGADO` | Alta de insumo |
+| GET | `/api/inventario/movimientos?itemTipo=&itemId=` | autenticado | Historial de movimientos de stock |
+| POST | `/api/inventario/movimientos` | `DUENO`/`ENCARGADO` | Movimiento manual (entrada/salida/ajuste/merma) |
+
+## Endpoints de caja
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/api/caja/actual` | Caja abierta actualmente (404 si no hay ninguna) |
+| POST | `/api/caja/abrir` | Abre un turno (`{ "montoInicial": ... }`) — falla si ya hay una caja abierta |
+| POST | `/api/caja/{id}/cerrar` | Cierra el turno (`{ "montoFinal": ... }`) |
+| GET/POST | `/api/caja/{id}/movimientos` | Ingresos/egresos manuales de esa caja |
+
+## Endpoints de ventas (POS)
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/api/ventas/escanear?codigo=...` | Resuelve lo que devolvió el lector láser (código fijo o etiqueta de balanza PLU+peso) y devuelve una preview con cantidad/precio/subtotal, sin confirmar nada |
+| POST | `/api/ventas` | Confirma la venta: recibe el carrito (ítems por código escaneado o por `productoId`+`cantidad`), descuenta stock automáticamente y registra el `MovimientoStock` correspondiente |
+| GET | `/api/ventas/{id}` | Detalle de una venta |
+
+**Importante sobre el parseo de código de balanza:** `EscaneoService` asume un esquema de 13 dígitos (prefijo 20-29 + 5 dígitos de PLU + 5 dígitos de peso en gramos + dígito verificador), que es el más común en Argentina pero varía por fabricante. Hay que confirmarlo contra el manual de la balanza real antes de ir a producción — las constantes de parseo están todas juntas al principio de la clase.
+
 ## Roles
 
-`DUENO`, `ENCARGADO`, `VENDEDOR` (ver `com.panaderia.erp.core.usuario.Rol`). Por ahora solo `DUENO` tiene una restricción explícita (gestión de usuarios); el resto de la autorización fina se define a medida que se agreguen los módulos de negocio.
+`DUENO`, `ENCARGADO`, `VENDEDOR` (ver `com.panaderia.erp.core.usuario.Rol`). Gestión de usuarios, productos, categorías, insumos y ajustes manuales de stock: `DUENO`/`ENCARGADO`. Caja y ventas: los tres roles (`VENDEDOR` incluido, ya que es el que opera el POS).
 
 ## Configuración por entorno
 

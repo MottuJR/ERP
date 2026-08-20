@@ -1,0 +1,153 @@
+package com.panaderia.erp.productos;
+
+import com.panaderia.erp.core.exception.ConflictoException;
+import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
+import com.panaderia.erp.core.exception.ValidacionNegocioException;
+import com.panaderia.erp.productos.dto.ActualizarProductoRequest;
+import com.panaderia.erp.productos.dto.CrearProductoRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+@Service
+public class ProductoService {
+
+    private final ProductoRepository productoRepository;
+    private final CategoriaService categoriaService;
+
+    public ProductoService(ProductoRepository productoRepository, CategoriaService categoriaService) {
+        this.productoRepository = productoRepository;
+        this.categoriaService = categoriaService;
+    }
+
+    public List<Producto> listarActivos() {
+        return productoRepository.findByActivoTrue();
+    }
+
+    public Producto obtenerPorId(Long id) {
+        return productoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado: " + id));
+    }
+
+    public Producto obtenerPorCodigoBarras(String codigoBarras) {
+        return productoRepository.findByCodigoBarras(codigoBarras)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No hay ningún producto con código de barras: " + codigoBarras));
+    }
+
+    public Producto obtenerPorCodigoPLU(String codigoPLU) {
+        return productoRepository.findByCodigoPLU(codigoPLU)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No hay ningún producto con código PLU: " + codigoPLU));
+    }
+
+    @Transactional
+    public Producto crear(CrearProductoRequest request) {
+        validarCodigos(request.seVendePorPeso(), request.codigoBarras(), request.codigoPLU());
+        validarCodigosDisponibles(request.codigoBarras(), request.codigoPLU(), null);
+
+        Categoria categoria = categoriaService.obtenerPorId(request.categoriaId());
+
+        Producto producto = new Producto(
+                request.nombre(),
+                categoria,
+                request.tipo(),
+                request.seVendePorPeso(),
+                request.precioVenta(),
+                request.unidadMedida(),
+                normalizar(request.codigoBarras()),
+                normalizar(request.codigoPLU()),
+                request.stockMinimo());
+
+        return productoRepository.save(producto);
+    }
+
+    @Transactional
+    public Producto actualizar(Long id, ActualizarProductoRequest request) {
+        Producto producto = obtenerPorId(id);
+
+        validarCodigos(request.seVendePorPeso(), request.codigoBarras(), request.codigoPLU());
+        validarCodigosDisponibles(request.codigoBarras(), request.codigoPLU(), id);
+
+        Categoria categoria = categoriaService.obtenerPorId(request.categoriaId());
+
+        producto.setNombre(request.nombre());
+        producto.setCategoria(categoria);
+        producto.setTipo(request.tipo());
+        producto.setSeVendePorPeso(request.seVendePorPeso());
+        producto.setPrecioVenta(request.precioVenta());
+        producto.setUnidadMedida(request.unidadMedida());
+        producto.setCodigoBarras(normalizar(request.codigoBarras()));
+        producto.setCodigoPLU(normalizar(request.codigoPLU()));
+        producto.setStockMinimo(request.stockMinimo());
+        producto.setActivo(request.activo());
+
+        return producto;
+    }
+
+    @Transactional
+    public void desactivar(Long id) {
+        obtenerPorId(id).setActivo(false);
+    }
+
+    /**
+     * Punto único de mutación de stock de productos: lo usa el módulo de inventario
+     * para reflejar ventas, compras, producción o ajustes manuales.
+     */
+    @Transactional
+    public Producto ajustarStockActual(Long productoId, BigDecimal delta) {
+        Producto producto = obtenerPorId(productoId);
+        BigDecimal nuevoStock = producto.getStockActual().add(delta);
+
+        if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ConflictoException(
+                    "Stock insuficiente para \"%s\": disponible %s, se intentó descontar %s"
+                            .formatted(producto.getNombre(), producto.getStockActual(), delta.abs()));
+        }
+
+        producto.setStockActual(nuevoStock);
+        return producto;
+    }
+
+    private void validarCodigos(boolean seVendePorPeso, String codigoBarras, String codigoPLU) {
+        if (seVendePorPeso && !StringUtils.hasText(codigoPLU)) {
+            throw new ValidacionNegocioException(
+                    "Un producto vendido por peso necesita un código PLU");
+        }
+
+        if (seVendePorPeso && StringUtils.hasText(codigoBarras)) {
+            throw new ValidacionNegocioException(
+                    "Un producto vendido por peso no debe tener código de barras fijo");
+        }
+
+        if (!seVendePorPeso && StringUtils.hasText(codigoPLU)) {
+            throw new ValidacionNegocioException(
+                    "El código PLU es exclusivo de productos vendidos por peso");
+        }
+    }
+
+    private void validarCodigosDisponibles(String codigoBarras, String codigoPLU, Long idExcluido) {
+        if (StringUtils.hasText(codigoBarras)) {
+            productoRepository.findByCodigoBarras(codigoBarras)
+                    .filter(p -> !p.getId().equals(idExcluido))
+                    .ifPresent(p -> {
+                        throw new ConflictoException("Ya existe un producto con ese código de barras");
+                    });
+        }
+
+        if (StringUtils.hasText(codigoPLU)) {
+            productoRepository.findByCodigoPLU(codigoPLU)
+                    .filter(p -> !p.getId().equals(idExcluido))
+                    .ifPresent(p -> {
+                        throw new ConflictoException("Ya existe un producto con ese código PLU");
+                    });
+        }
+    }
+
+    private String normalizar(String valor) {
+        return StringUtils.hasText(valor) ? valor.trim() : null;
+    }
+}

@@ -2,6 +2,7 @@ package com.panaderia.erp.auth.controller;
 
 import com.panaderia.erp.auth.dto.CrearUsuarioRequest;
 import com.panaderia.erp.auth.dto.UsuarioResponse;
+import com.panaderia.erp.core.exception.ConflictoException;
 import com.panaderia.erp.core.usuario.Usuario;
 import com.panaderia.erp.core.usuario.UsuarioRepository;
 import jakarta.validation.Valid;
@@ -41,7 +42,7 @@ public class UsuarioController {
     @PreAuthorize("hasRole('DUENO')")
     public ResponseEntity<UsuarioResponse> crear(@Valid @RequestBody CrearUsuarioRequest request) {
         if (usuarioRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("Ya existe un usuario con ese email");
+            throw new ConflictoException("Ya existe un usuario con ese email");
         }
 
         Usuario usuario = new Usuario(
