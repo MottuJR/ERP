@@ -85,3 +85,64 @@ export interface ApiErrorBody {
   error: string;
   campos?: Record<string, string>;
 }
+
+export interface Insumo {
+  id: number;
+  nombre: string;
+  unidadMedida: UnidadMedida;
+  stockActual: number;
+  stockMinimo: number;
+  costoUnitario: number;
+}
+
+export interface RecetaItem {
+  insumoId: number;
+  insumoNombre: string;
+  unidadMedida: string;
+  cantidad: number;
+}
+
+export interface Receta {
+  id: number;
+  productoId: number;
+  productoNombre: string;
+  items: RecetaItem[];
+}
+
+export interface OrdenProduccion {
+  id: number;
+  productoId: number;
+  productoNombre: string;
+  cantidad: number;
+  fecha: string;
+  estado: string;
+  usuarioId: number;
+}
+
+export interface Proveedor {
+  id: number;
+  nombre: string;
+  contacto: string | null;
+  telefono: string | null;
+  email: string | null;
+  activo: boolean;
+}
+
+export interface DetalleCompra {
+  id: number;
+  insumoId: number;
+  insumoNombre: string;
+  cantidad: number;
+  costoUnitario: number;
+  subtotal: number;
+}
+
+export interface Compra {
+  id: number;
+  proveedorId: number;
+  proveedorNombre: string;
+  fecha: string;
+  total: number;
+  estado: string;
+  detalles: DetalleCompra[];
+}

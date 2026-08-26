@@ -7,17 +7,15 @@ import {
   Flex,
   Input,
   InputNumber,
-  Layout,
   Row,
   Select,
   Table,
-  Tag,
   Typography,
   message,
 } from 'antd';
-import { DeleteOutlined, LogoutOutlined, ScanOutlined } from '@ant-design/icons';
+import { DeleteOutlined, ScanOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { useAuth } from '../auth/AuthContext';
+import { AppLayout } from '../layout/AppLayout';
 import { listarProductos } from '../api/productos';
 import { confirmarVenta, escanear, type ItemVentaPayload } from '../api/ventas';
 import { mensajeDeError } from '../api/client';
@@ -37,8 +35,6 @@ interface ItemCarrito {
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
 export function PosPage() {
-  const { usuario, logout } = useAuth();
-
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargandoProductos, setCargandoProductos] = useState(true);
   const [errorProductos, setErrorProductos] = useState<string | null>(null);
@@ -185,102 +181,82 @@ export function PosPage() {
   ];
 
   return (
-    <Layout style={{ minHeight: '100%' }}>
-      <Layout.Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography.Title level={4} style={{ color: 'white', margin: 0 }}>
-          ERP Panadería — Punto de venta
-        </Typography.Title>
-        <Flex align="center" gap={12}>
-          <Tag color="blue">{usuario?.rol}</Tag>
-          <Typography.Text style={{ color: 'white' }}>{usuario?.nombre}</Typography.Text>
-          <Button icon={<LogoutOutlined />} onClick={logout}>
-            Salir
-          </Button>
-        </Flex>
-      </Layout.Header>
+    <AppLayout>
+      {errorProductos && <Alert type="error" title={errorProductos} showIcon style={{ marginBottom: 16 }} />}
 
-      <Layout.Content style={{ padding: 24 }}>
-        {errorProductos && <Alert type="error" title={errorProductos} showIcon style={{ marginBottom: 16 }} />}
-
-        <Row gutter={24}>
-          <Col span={10}>
-            <Card title="Agregar producto" style={{ marginBottom: 24 }}>
-              <Typography.Text type="secondary">Escanear código de barras o etiqueta de balanza</Typography.Text>
-              <Flex gap={8} style={{ marginTop: 8, marginBottom: 24 }}>
-                <Input
-                  prefix={<ScanOutlined />}
-                  placeholder="Código escaneado"
-                  value={codigoInput}
-                  onChange={(e) => setCodigoInput(e.target.value)}
-                  onPressEnter={handleEscanear}
-                  disabled={escaneando}
-                  autoFocus
-                />
-                <Button type="primary" onClick={handleEscanear} loading={escaneando}>
-                  Agregar
-                </Button>
-              </Flex>
-
-              <Typography.Text type="secondary">Buscar producto manualmente</Typography.Text>
-              <Flex gap={8} style={{ marginTop: 8 }}>
-                <Select
-                  showSearch
-                  placeholder="Producto"
-                  style={{ flex: 1 }}
-                  loading={cargandoProductos}
-                  value={productoManualId}
-                  onChange={setProductoManualId}
-                  optionFilterProp="label"
-                  options={productos.map((p) => ({
-                    value: p.id,
-                    label: `${p.nombre} — ${formatoMoneda.format(p.precioVenta)}`,
-                  }))}
-                />
-                <InputNumber min={1} value={cantidadManual} onChange={(v) => setCantidadManual(v ?? 1)} />
-                <Button onClick={handleAgregarManual} disabled={!productoManualId}>
-                  Agregar
-                </Button>
-              </Flex>
-            </Card>
-          </Col>
-
-          <Col span={14}>
-            <Card title="Carrito">
-              <Table
-                columns={columnas}
-                dataSource={carrito}
-                rowKey="key"
-                pagination={false}
-                locale={{ emptyText: 'Todavía no agregaste ningún producto' }}
+      <Row gutter={24}>
+        <Col span={10}>
+          <Card title="Agregar producto" style={{ marginBottom: 24 }}>
+            <Typography.Text type="secondary">Escanear código de barras o etiqueta de balanza</Typography.Text>
+            <Flex gap={8} style={{ marginTop: 8, marginBottom: 24 }}>
+              <Input
+                prefix={<ScanOutlined />}
+                placeholder="Código escaneado"
+                value={codigoInput}
+                onChange={(e) => setCodigoInput(e.target.value)}
+                onPressEnter={handleEscanear}
+                disabled={escaneando}
+                autoFocus
               />
-
-              <Flex justify="space-between" align="center" style={{ marginTop: 24 }}>
-                <Select
-                  value={medioPago}
-                  onChange={setMedioPago}
-                  options={MEDIOS_PAGO}
-                  style={{ width: 220 }}
-                />
-                <Typography.Title level={3} style={{ margin: 0 }}>
-                  Total: {formatoMoneda.format(total)}
-                </Typography.Title>
-              </Flex>
-
-              <Button
-                type="primary"
-                size="large"
-                block
-                style={{ marginTop: 16 }}
-                disabled={carrito.length === 0}
-                loading={confirmando}
-                onClick={handleConfirmarVenta}
-              >
-                Confirmar venta
+              <Button type="primary" onClick={handleEscanear} loading={escaneando}>
+                Agregar
               </Button>
-            </Card>
-          </Col>
-        </Row>
-      </Layout.Content>
-    </Layout>
+            </Flex>
+
+            <Typography.Text type="secondary">Buscar producto manualmente</Typography.Text>
+            <Flex gap={8} style={{ marginTop: 8 }}>
+              <Select
+                showSearch
+                placeholder="Producto"
+                style={{ flex: 1 }}
+                loading={cargandoProductos}
+                value={productoManualId}
+                onChange={setProductoManualId}
+                optionFilterProp="label"
+                options={productos.map((p) => ({
+                  value: p.id,
+                  label: `${p.nombre} — ${formatoMoneda.format(p.precioVenta)}`,
+                }))}
+              />
+              <InputNumber min={1} value={cantidadManual} onChange={(v) => setCantidadManual(v ?? 1)} />
+              <Button onClick={handleAgregarManual} disabled={!productoManualId}>
+                Agregar
+              </Button>
+            </Flex>
+          </Card>
+        </Col>
+
+        <Col span={14}>
+          <Card title="Carrito">
+            <Table
+              columns={columnas}
+              dataSource={carrito}
+              rowKey="key"
+              pagination={false}
+              locale={{ emptyText: 'Todavía no agregaste ningún producto' }}
+            />
+
+            <Flex justify="space-between" align="center" style={{ marginTop: 24 }}>
+              <Select value={medioPago} onChange={setMedioPago} options={MEDIOS_PAGO} style={{ width: 220 }} />
+              <Typography.Title level={3} style={{ margin: 0 }}>
+                Total: {formatoMoneda.format(total)}
+              </Typography.Title>
+            </Flex>
+
+            <Button
+              type="primary"
+              size="large"
+              block
+              style={{ marginTop: 16 }}
+              disabled={carrito.length === 0}
+              loading={confirmando}
+              onClick={handleConfirmarVenta}
+            >
+              Confirmar venta
+            </Button>
+          </Card>
+        </Col>
+      </Row>
+    </AppLayout>
   );
 }

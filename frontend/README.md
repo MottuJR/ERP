@@ -1,6 +1,6 @@
 # ERP Panadería — Frontend
 
-React + Vite + TypeScript + Ant Design. Por ahora cubre lo mínimo para probar el flujo de punta a punta contra el backend: login y una pantalla de venta (POS) funcional, sin pulir.
+React + Vite + TypeScript + Ant Design. Cubre lo mínimo para probar de punta a punta lo que hay en el backend: login, venta (POS), recetas, producción, proveedores y compras — funcional, sin pulir.
 
 ## Requisitos
 
@@ -21,23 +21,30 @@ Usuario de prueba (seed de desarrollo del backend): `admin@panaderia.local` / `c
 ## Qué hay
 
 - **Login** (`/login`): contra `POST /api/auth/login`. Guarda el JWT y los datos del usuario en `localStorage`.
-- **POS** (`/pos`, ruta protegida): pantalla de venta.
+- **`AppLayout`**: header con navegación compartido por todas las pantallas autenticadas. Los links de Recetas/Producción/Proveedores/Compras solo se muestran a `DUENO`/`ENCARGADO` (igual que las restricciones del backend); `VENDEDOR` solo ve "Venta".
+- **POS** (`/pos`): pantalla de venta.
   - Un input simula el lector láser: se tipea/escanea un código y Enter lo resuelve contra `GET /api/ventas/escanear` (distingue código de barras fijo de etiqueta de balanza PLU+peso) y lo agrega al carrito.
   - También se puede buscar un producto manualmente por nombre y agregarlo con una cantidad.
   - "Confirmar venta" llama a `POST /api/ventas`, que descuenta stock en el backend.
+- **Recetas** (`/recetas`): elegís un producto elaborado, cargás/editás los ítems (insumo + cantidad por unidad de producto) y guardás contra `POST`/`PUT /api/produccion/recetas`.
+- **Producción** (`/produccion`): elegís un producto con receta, ponés la cantidad a producir, ves una preview de cuánto insumo se va a consumir (calculada en el cliente a partir de la receta) y confirmás contra `POST /api/produccion/ordenes`.
+- **Proveedores** (`/proveedores`): alta/edición en un modal, contra `/api/proveedores`.
+- **Compras** (`/compras`): elegís proveedor, cargás ítems (insumo, cantidad, costo unitario) y confirmás contra `POST /api/compras`.
 - Un interceptor de Axios (`src/api/client.ts`) agrega el JWT a cada request y desloguea automáticamente ante un 401.
 
 ## Qué falta (fuera del alcance de esta etapa)
 
-- Pantallas de gestión de productos/inventario/caja (el backend ya tiene los endpoints).
+- Pantalla para dar de alta insumos: Recetas y Compras asumen que los insumos ya existen (creados directo contra `POST /api/inventario/insumos`, no hay UI para eso todavía).
+- Pantallas de gestión de productos/categorías/inventario/caja (el backend ya tiene los endpoints).
 - Pulido visual, manejo de sesión expirada más prolijo, tests de frontend.
 
 ## Estructura
 
 ```
 src/
-├── api/        # cliente Axios + funciones por recurso (auth, productos, ventas)
+├── api/        # cliente Axios + funciones por recurso (auth, productos, ventas, inventario, produccion, compras)
 ├── auth/       # AuthContext (JWT + usuario en localStorage) y ProtectedRoute
-├── pages/      # LoginPage, PosPage
+├── layout/     # AppLayout: header + navegación compartida por rol
+├── pages/      # LoginPage, PosPage, RecetasPage, ProduccionPage, ProveedoresPage, ComprasPage
 └── types/      # tipos TS que reflejan los DTOs del backend
 ```
