@@ -74,6 +74,36 @@ public class InventarioService {
                 TipoMovimiento.SALIDA, ItemTipo.PRODUCTO, productoId, cantidad.negate(), "Venta", ventaId);
     }
 
+    /**
+     * Descuenta el insumo que consume una orden de producción (según su receta). Lo usa el módulo de producción.
+     */
+    @Transactional
+    public MovimientoStock registrarSalidaInsumoPorProduccion(Long insumoId, BigDecimal cantidad, Long ordenProduccionId) {
+        return aplicarMovimiento(
+                TipoMovimiento.SALIDA, ItemTipo.INSUMO, insumoId, cantidad.negate(), "Producción", ordenProduccionId);
+    }
+
+    /**
+     * Suma el producto terminado que resulta de una orden de producción. Lo usa el módulo de producción.
+     */
+    @Transactional
+    public MovimientoStock registrarEntradaProductoPorProduccion(Long productoId, BigDecimal cantidad, Long ordenProduccionId) {
+        return aplicarMovimiento(
+                TipoMovimiento.ENTRADA, ItemTipo.PRODUCTO, productoId, cantidad, "Producción", ordenProduccionId);
+    }
+
+    /**
+     * Suma el insumo recibido en una compra y actualiza su costo unitario al último precio pagado.
+     * Lo usa el módulo de compras.
+     */
+    @Transactional
+    public MovimientoStock registrarEntradaInsumoPorCompra(Long insumoId, BigDecimal cantidad,
+                                                            BigDecimal costoUnitario, Long compraId) {
+        Insumo insumo = obtenerInsumoPorId(insumoId);
+        insumo.setCostoUnitario(costoUnitario);
+        return aplicarMovimiento(TipoMovimiento.ENTRADA, ItemTipo.INSUMO, insumoId, cantidad, "Compra", compraId);
+    }
+
     private MovimientoStock aplicarMovimiento(TipoMovimiento tipo, ItemTipo itemTipo, Long itemId,
                                                BigDecimal delta, String motivo, Long referenciaId) {
         if (itemTipo == ItemTipo.PRODUCTO) {
