@@ -1,6 +1,6 @@
 # ERP Panadería — Backend
 
-Fase 0 (setup: proyecto base, Postgres vía Flyway, autenticación JWT), Fase 1 (Productos, Inventario, Caja, Ventas/POS), Fase 2 (Producción, Compras) y Fase 3 (Reportes, Comisiones/Liquidaciones, Cuentas corrientes) del roadmap.
+Fase 0 (setup: proyecto base, Postgres vía Flyway, autenticación JWT), Fase 1 (Productos, Inventario, Caja, Ventas/POS), Fase 2 (Producción, Compras), Fase 3 (Reportes, Comisiones/Liquidaciones, Cuentas corrientes) y Fase 4 (Pulido: permisos finos por rol, auditoría de cambios) del roadmap.
 
 ## Stack
 
@@ -66,6 +66,7 @@ Authorization: Bearer <token>
 | POST/PUT/DELETE | `/api/productos/**` | `DUENO`/`ENCARGADO` | Alta/edición/baja (soft-delete) |
 | GET | `/api/inventario/insumos` | autenticado | Lista insumos |
 | POST | `/api/inventario/insumos` | `DUENO`/`ENCARGADO` | Alta de insumo |
+| PUT | `/api/inventario/insumos/{id}` | `DUENO`/`ENCARGADO` | Edición de datos maestros del insumo (nombre, unidad, stock mínimo, costo) — no toca `stockActual` |
 | GET | `/api/inventario/movimientos?itemTipo=&itemId=` | autenticado | Historial de movimientos de stock |
 | POST | `/api/inventario/movimientos` | `DUENO`/`ENCARGADO` | Movimiento manual (entrada/salida/ajuste/merma) |
 
@@ -144,11 +145,17 @@ Acceso: solo `DUENO` (es información de sueldos). El porcentaje de comisión vi
 | GET | `/api/clientes/{id}/saldo` | `suma(Venta.total con medioPago=CUENTA_CORRIENTE) - suma(PagoCliente.monto)` |
 | GET/POST | `/api/clientes/{id}/pagos` | Historial y registro de pagos contra la cuenta |
 
-Al confirmar una venta con `medioPago: CUENTA_CORRIENTE`, `VentaService` exige `clienteId` y valida que ese cliente tenga `tieneCuentaCorriente = true` (si no, `400`).
+Al confirmar una venta con `medioPago: CUENTA_CORRIENTE`, `VentaService` exige `clienteId` y valida que ese cliente tenga `tieneCuentaCorriente = true` (si no, `400`). `POST /api/clientes/{id}/pagos` requiere `DUENO`/`ENCARGADO` (es manejo de caja/cobranza, no algo que un `VENDEDOR` deba poder hacer sin supervisión).
 
 ## Roles
 
-`DUENO`, `ENCARGADO`, `VENDEDOR` (ver `com.panaderia.erp.core.usuario.Rol`). Gestión de usuarios, productos, categorías, insumos y ajustes manuales de stock: `DUENO`/`ENCARGADO`. Caja y ventas: los tres roles (`VENDEDOR` incluido, ya que es el que opera el POS).
+`DUENO`, `ENCARGADO`, `VENDEDOR` (ver `com.panaderia.erp.core.usuario.Rol`). Gestión de usuarios, productos, categorías, insumos, clientes y ajustes manuales de stock: `DUENO`/`ENCARGADO`. Caja y ventas: los tres roles (`VENDEDOR` incluido, ya que es el que opera el POS). Auditoría: solo `DUENO`. La lista completa de accesos por endpoint está reflejada en las tablas de arriba; el criterio general es "consulta abierta a los tres roles autenticados, escritura restringida según sensibilidad".
+
+## Auditoría de cambios
+
+`GET /api/auditoria?entidad=&entidadId=` (solo `DUENO`) devuelve el historial de la tabla genérica `registro_auditoria` (`usuarioId`, `entidad`, `entidadId`, `accion`, `fecha`, `detalle`), poblada vía `AuditoriaService.registrar(...)` desde dentro de las mismas transacciones de negocio — no es un mecanismo separado (AOP/interceptor), sigue el mismo patrón que ya se usaba para pasar el usuario logueado a los servicios (`Authentication` → email → servicio).
+
+Operaciones auditadas: alta/edición/baja de productos (con detalle especial cuando cambia el precio), ajustes manuales de stock (`POST /api/inventario/movimientos`), apertura y cierre de caja. **No** se audita: los movimientos de stock automáticos de ventas/producción/compras (ya tienen su propia trazabilidad vía `MovimientoStock.referenciaId`), ni los ingresos/egresos de caja dentro de un turno (solo apertura/cierre).
 
 ## Configuración por entorno
 

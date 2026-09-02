@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,21 +48,23 @@ public class ProductoController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
-    public ResponseEntity<ProductoResponse> crear(@Valid @RequestBody CrearProductoRequest request) {
-        Producto producto = productoService.crear(request);
+    public ResponseEntity<ProductoResponse> crear(@Valid @RequestBody CrearProductoRequest request,
+                                                   Authentication authentication) {
+        Producto producto = productoService.crear(request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(ProductoResponse.from(producto));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
-    public ProductoResponse actualizar(@PathVariable Long id, @Valid @RequestBody ActualizarProductoRequest request) {
-        return ProductoResponse.from(productoService.actualizar(id, request));
+    public ProductoResponse actualizar(@PathVariable Long id, @Valid @RequestBody ActualizarProductoRequest request,
+                                        Authentication authentication) {
+        return ProductoResponse.from(productoService.actualizar(id, request, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
-    public ResponseEntity<Void> desactivar(@PathVariable Long id) {
-        productoService.desactivar(id);
+    public ResponseEntity<Void> desactivar(@PathVariable Long id, Authentication authentication) {
+        productoService.desactivar(id, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 }

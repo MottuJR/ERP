@@ -1,5 +1,7 @@
 package com.panaderia.erp.caja;
 
+import com.panaderia.erp.core.auditoria.AccionAuditoria;
+import com.panaderia.erp.core.auditoria.AuditoriaService;
 import com.panaderia.erp.core.exception.ConflictoException;
 import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
 import com.panaderia.erp.core.exception.ValidacionNegocioException;
@@ -15,16 +17,21 @@ import java.util.Optional;
 @Service
 public class CajaService {
 
+    private static final String ENTIDAD = "Caja";
+
     private final CajaRepository cajaRepository;
     private final MovimientoCajaRepository movimientoCajaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final AuditoriaService auditoriaService;
 
     public CajaService(CajaRepository cajaRepository,
                         MovimientoCajaRepository movimientoCajaRepository,
-                        UsuarioRepository usuarioRepository) {
+                        UsuarioRepository usuarioRepository,
+                        AuditoriaService auditoriaService) {
         this.cajaRepository = cajaRepository;
         this.movimientoCajaRepository = movimientoCajaRepository;
         this.usuarioRepository = usuarioRepository;
+        this.auditoriaService = auditoriaService;
     }
 
     public Caja obtenerPorId(Long id) {
@@ -47,11 +54,16 @@ public class CajaService {
         }
 
         Usuario usuario = obtenerUsuario(emailUsuario);
-        return cajaRepository.save(new Caja(montoInicial, usuario.getId()));
+        Caja caja = cajaRepository.save(new Caja(montoInicial, usuario.getId()));
+
+        auditoriaService.registrar(emailUsuario, ENTIDAD, caja.getId(), AccionAuditoria.ABRIR_CAJA,
+                "Apertura con monto inicial %s".formatted(montoInicial));
+
+        return caja;
     }
 
     @Transactional
-    public Caja cerrarTurno(Long cajaId, BigDecimal montoFinal) {
+    public Caja cerrarTurno(Long cajaId, BigDecimal montoFinal, String emailUsuario) {
         Caja caja = obtenerPorId(cajaId);
 
         if (caja.getEstado() != EstadoCaja.ABIERTA) {
@@ -59,6 +71,10 @@ public class CajaService {
         }
 
         caja.cerrar(montoFinal);
+
+        auditoriaService.registrar(emailUsuario, ENTIDAD, caja.getId(), AccionAuditoria.CERRAR_CAJA,
+                "Cierre con monto final %s".formatted(montoFinal));
+
         return caja;
     }
 

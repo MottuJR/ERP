@@ -77,6 +77,7 @@ public class ClienteController {
     }
 
     @PostMapping("/{id}/pagos")
+    @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
     public ResponseEntity<PagoClienteResponse> registrarPago(@PathVariable Long id,
                                                               @Valid @RequestBody PagoClienteRequest request) {
         PagoCliente pago = cuentaCorrienteService.registrarPago(id, request);

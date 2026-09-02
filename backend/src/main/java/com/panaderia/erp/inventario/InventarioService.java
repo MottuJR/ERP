@@ -1,5 +1,7 @@
 package com.panaderia.erp.inventario;
 
+import com.panaderia.erp.core.auditoria.AccionAuditoria;
+import com.panaderia.erp.core.auditoria.AuditoriaService;
 import com.panaderia.erp.core.exception.ConflictoException;
 import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
 import com.panaderia.erp.core.exception.ValidacionNegocioException;
@@ -25,13 +27,16 @@ public class InventarioService {
     private final InsumoRepository insumoRepository;
     private final MovimientoStockRepository movimientoStockRepository;
     private final ProductoService productoService;
+    private final AuditoriaService auditoriaService;
 
     public InventarioService(InsumoRepository insumoRepository,
                               MovimientoStockRepository movimientoStockRepository,
-                              ProductoService productoService) {
+                              ProductoService productoService,
+                              AuditoriaService auditoriaService) {
         this.insumoRepository = insumoRepository;
         this.movimientoStockRepository = movimientoStockRepository;
         this.productoService = productoService;
+        this.auditoriaService = auditoriaService;
     }
 
     public List<Insumo> listarInsumos() {
@@ -56,20 +61,40 @@ public class InventarioService {
                 request.nombre(), request.unidadMedida(), request.stockMinimo(), request.costoUnitario()));
     }
 
+    /**
+     * No toca stockActual (eso solo cambia vía movimientos) ni requiere auditoría propia: es
+     * una edición de datos maestros, no un ajuste de stock.
+     */
+    @Transactional
+    public Insumo actualizarInsumo(Long id, InsumoRequest request) {
+        Insumo insumo = obtenerInsumoPorId(id);
+        insumo.setNombre(request.nombre());
+        insumo.setUnidadMedida(request.unidadMedida());
+        insumo.setStockMinimo(request.stockMinimo());
+        insumo.setCostoUnitario(request.costoUnitario());
+        return insumo;
+    }
+
     public List<MovimientoStock> listarMovimientos(ItemTipo itemTipo, Long itemId) {
         return movimientoStockRepository.findByItemTipoAndItemIdOrderByFechaDesc(itemTipo, itemId);
     }
 
     @Transactional
-    public MovimientoStock registrarMovimientoManual(MovimientoManualRequest request) {
+    public MovimientoStock registrarMovimientoManual(MovimientoManualRequest request, String emailUsuario) {
         validarSigno(request.tipo(), request.cantidad());
 
-        return switch (request.itemTipo()) {
+        MovimientoStock movimiento = switch (request.itemTipo()) {
             case PRODUCTO -> aplicarMovimiento(
                     request.tipo(), ItemTipo.PRODUCTO, request.itemId(), request.cantidad(), request.motivo(), null);
             case INSUMO -> aplicarMovimiento(
                     request.tipo(), ItemTipo.INSUMO, request.itemId(), request.cantidad(), request.motivo(), null);
         };
+
+        auditoriaService.registrar(emailUsuario, request.itemTipo().name(), request.itemId(),
+                AccionAuditoria.AJUSTE_STOCK,
+                "%s manual de %s: motivo \"%s\"".formatted(request.tipo(), request.cantidad(), request.motivo()));
+
+        return movimiento;
     }
 
     /**

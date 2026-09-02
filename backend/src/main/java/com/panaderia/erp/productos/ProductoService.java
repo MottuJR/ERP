@@ -1,5 +1,7 @@
 package com.panaderia.erp.productos;
 
+import com.panaderia.erp.core.auditoria.AccionAuditoria;
+import com.panaderia.erp.core.auditoria.AuditoriaService;
 import com.panaderia.erp.core.exception.ConflictoException;
 import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
 import com.panaderia.erp.core.exception.ValidacionNegocioException;
@@ -15,12 +17,17 @@ import java.util.List;
 @Service
 public class ProductoService {
 
+    private static final String ENTIDAD = "Producto";
+
     private final ProductoRepository productoRepository;
     private final CategoriaService categoriaService;
+    private final AuditoriaService auditoriaService;
 
-    public ProductoService(ProductoRepository productoRepository, CategoriaService categoriaService) {
+    public ProductoService(ProductoRepository productoRepository, CategoriaService categoriaService,
+                            AuditoriaService auditoriaService) {
         this.productoRepository = productoRepository;
         this.categoriaService = categoriaService;
+        this.auditoriaService = auditoriaService;
     }
 
     public List<Producto> listarActivos() {
@@ -52,7 +59,7 @@ public class ProductoService {
     }
 
     @Transactional
-    public Producto crear(CrearProductoRequest request) {
+    public Producto crear(CrearProductoRequest request, String emailUsuario) {
         validarCodigos(request.seVendePorPeso(), request.codigoBarras(), request.codigoPLU());
         validarCodigosDisponibles(request.codigoBarras(), request.codigoPLU(), null);
 
@@ -69,17 +76,23 @@ public class ProductoService {
                 normalizar(request.codigoPLU()),
                 request.stockMinimo());
 
-        return productoRepository.save(producto);
+        producto = productoRepository.save(producto);
+
+        auditoriaService.registrar(emailUsuario, ENTIDAD, producto.getId(), AccionAuditoria.CREAR,
+                "Alta de \"%s\", precio inicial %s".formatted(producto.getNombre(), producto.getPrecioVenta()));
+
+        return producto;
     }
 
     @Transactional
-    public Producto actualizar(Long id, ActualizarProductoRequest request) {
+    public Producto actualizar(Long id, ActualizarProductoRequest request, String emailUsuario) {
         Producto producto = obtenerPorId(id);
 
         validarCodigos(request.seVendePorPeso(), request.codigoBarras(), request.codigoPLU());
         validarCodigosDisponibles(request.codigoBarras(), request.codigoPLU(), id);
 
         Categoria categoria = categoriaService.obtenerPorId(request.categoriaId());
+        BigDecimal precioAnterior = producto.getPrecioVenta();
 
         producto.setNombre(request.nombre());
         producto.setCategoria(categoria);
@@ -92,12 +105,25 @@ public class ProductoService {
         producto.setStockMinimo(request.stockMinimo());
         producto.setActivo(request.activo());
 
+        if (precioAnterior.compareTo(request.precioVenta()) != 0) {
+            auditoriaService.registrar(emailUsuario, ENTIDAD, producto.getId(), AccionAuditoria.ACTUALIZAR,
+                    "Cambio de precio de \"%s\": %s -> %s".formatted(
+                            producto.getNombre(), precioAnterior, request.precioVenta()));
+        } else {
+            auditoriaService.registrar(emailUsuario, ENTIDAD, producto.getId(), AccionAuditoria.ACTUALIZAR,
+                    "Edición de \"%s\"".formatted(producto.getNombre()));
+        }
+
         return producto;
     }
 
     @Transactional
-    public void desactivar(Long id) {
-        obtenerPorId(id).setActivo(false);
+    public void desactivar(Long id, String emailUsuario) {
+        Producto producto = obtenerPorId(id);
+        producto.setActivo(false);
+
+        auditoriaService.registrar(emailUsuario, ENTIDAD, producto.getId(), AccionAuditoria.DESACTIVAR,
+                "Baja de \"%s\"".formatted(producto.getNombre()));
     }
 
     /**

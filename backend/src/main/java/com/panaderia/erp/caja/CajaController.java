@@ -51,8 +51,9 @@ public class CajaController {
     }
 
     @PostMapping("/{id}/cerrar")
-    public CajaResponse cerrar(@PathVariable Long id, @Valid @RequestBody CerrarCajaRequest request) {
-        return CajaResponse.from(cajaService.cerrarTurno(id, request.montoFinal()));
+    public CajaResponse cerrar(@PathVariable Long id, @Valid @RequestBody CerrarCajaRequest request,
+                                Authentication authentication) {
+        return CajaResponse.from(cajaService.cerrarTurno(id, request.montoFinal(), authentication.getName()));
     }
 
     @GetMapping("/{id}/movimientos")

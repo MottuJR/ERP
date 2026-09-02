@@ -8,9 +8,11 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -47,6 +49,12 @@ public class InventarioController {
         return ResponseEntity.status(HttpStatus.CREATED).body(InsumoResponse.from(insumo));
     }
 
+    @PutMapping("/insumos/{id}")
+    @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
+    public InsumoResponse actualizarInsumo(@PathVariable Long id, @Valid @RequestBody InsumoRequest request) {
+        return InsumoResponse.from(inventarioService.actualizarInsumo(id, request));
+    }
+
     @GetMapping("/movimientos")
     public List<MovimientoStockResponse> listarMovimientos(
             @RequestParam ItemTipo itemTipo, @RequestParam Long itemId) {
@@ -58,8 +66,8 @@ public class InventarioController {
     @PostMapping("/movimientos")
     @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
     public ResponseEntity<MovimientoStockResponse> registrarMovimiento(
-            @Valid @RequestBody MovimientoManualRequest request) {
-        MovimientoStock movimiento = inventarioService.registrarMovimientoManual(request);
+            @Valid @RequestBody MovimientoManualRequest request, Authentication authentication) {
+        MovimientoStock movimiento = inventarioService.registrarMovimientoManual(request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(MovimientoStockResponse.from(movimiento));
     }
 }
