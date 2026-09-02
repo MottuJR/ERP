@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -13,6 +13,7 @@ import {
   Typography,
   message,
 } from 'antd';
+import type { InputRef } from 'antd';
 import { DeleteOutlined, ScanOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
@@ -53,6 +54,15 @@ export function PosPage() {
   const [clientesConCuenta, setClientesConCuenta] = useState<Cliente[]>([]);
   const [clienteId, setClienteId] = useState<number | undefined>();
 
+  // El lector láser escribe donde esté el foco y termina con Enter, como un teclado. Si el
+  // foco se queda en un botón después de agregar un ítem, el siguiente escaneo se pierde —
+  // por eso hay que devolverlo acá después de cada acción (éxito, error, o al confirmar).
+  const inputCodigoRef = useRef<InputRef>(null);
+
+  function enfocarInputCodigo() {
+    setTimeout(() => inputCodigoRef.current?.focus(), 0);
+  }
+
   useEffect(() => {
     listarProductos()
       .then(setProductos)
@@ -74,7 +84,7 @@ export function PosPage() {
 
   async function handleEscanear() {
     const codigo = codigoInput.trim();
-    if (!codigo) return;
+    if (!codigo || escaneando) return;
 
     setEscaneando(true);
     try {
@@ -92,11 +102,15 @@ export function PosPage() {
           precioUnitario: resultado.precioUnitario,
         },
       ]);
+      const cantidadTexto = resultado.seVendePorPeso ? `${resultado.cantidad.toFixed(3)} kg` : `x${resultado.cantidad}`;
+      message.success({ content: `${resultado.productoNombre} (${cantidadTexto})`, duration: 1.2 });
       setCodigoInput('');
     } catch (err) {
       message.error(mensajeDeError(err, 'No se encontró ningún producto con ese código'));
+      setCodigoInput('');
     } finally {
       setEscaneando(false);
+      enfocarInputCodigo();
     }
   }
 
@@ -158,8 +172,24 @@ export function PosPage() {
       message.error(mensajeDeError(err, 'No se pudo confirmar la venta'));
     } finally {
       setConfirmando(false);
+      enfocarInputCodigo();
     }
   }
+
+  // Atajo para confirmar la venta sin soltar el mouse ni ir a buscar el botón: Ctrl+Enter
+  // desde cualquier parte de la pantalla, mientras haya algo en el carrito.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        if (carrito.length > 0 && !confirmando) {
+          handleConfirmarVenta();
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [carrito, confirmando]);
 
   const columnas: ColumnsType<ItemCarrito> = [
     { title: 'Producto', dataIndex: 'productoNombre' },
@@ -211,12 +241,12 @@ export function PosPage() {
             <Typography.Text type="secondary">Escanear código de barras o etiqueta de balanza</Typography.Text>
             <Flex gap={8} style={{ marginTop: 8, marginBottom: 24 }}>
               <Input
+                ref={inputCodigoRef}
                 prefix={<ScanOutlined />}
                 placeholder="Código escaneado"
                 value={codigoInput}
                 onChange={(e) => setCodigoInput(e.target.value)}
                 onPressEnter={handleEscanear}
-                disabled={escaneando}
                 autoFocus
               />
               <Button type="primary" onClick={handleEscanear} loading={escaneando}>
@@ -239,7 +269,12 @@ export function PosPage() {
                   label: `${p.nombre} — ${formatoMoneda.format(p.precioVenta)}`,
                 }))}
               />
-              <InputNumber min={1} value={cantidadManual} onChange={(v) => setCantidadManual(v ?? 1)} />
+              <InputNumber
+                min={1}
+                value={cantidadManual}
+                onChange={(v) => setCantidadManual(v ?? 1)}
+                onPressEnter={handleAgregarManual}
+              />
               <Button onClick={handleAgregarManual} disabled={!productoManualId}>
                 Agregar
               </Button>
