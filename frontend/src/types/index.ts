@@ -146,3 +146,91 @@ export interface Compra {
   estado: string;
   detalles: DetalleCompra[];
 }
+
+export interface Cliente {
+  id: number;
+  nombre: string;
+  telefono: string | null;
+  tieneCuentaCorriente: boolean;
+  activo: boolean;
+}
+
+export interface PagoCliente {
+  id: number;
+  clienteId: number;
+  fecha: string;
+  monto: number;
+  medioPago: MedioPago;
+}
+
+export interface SaldoCliente {
+  clienteId: number;
+  clienteNombre: string;
+  totalVentasCuentaCorriente: number;
+  totalPagos: number;
+  saldo: number;
+}
+
+export interface ComisionVendedor {
+  cajaId: number;
+  usuarioId: number;
+  usuarioNombre: string;
+  totalVendido: number;
+  porcentaje: number | null;
+  comision: number;
+}
+
+export interface ComisionProduccion {
+  ordenId: number;
+  usuarioId: number;
+  usuarioNombre: string;
+  productoId: number;
+  productoNombre: string;
+  cantidadProducida: number;
+  precioProducto: number;
+  porcentaje: number | null;
+  comision: number;
+}
+
+export interface VentaDia {
+  fecha: string;
+  cantidadVentas: number;
+  totalVendido: number;
+}
+
+export interface ReporteVentas {
+  desde: string;
+  hasta: string;
+  cantidadVentas: number;
+  totalVendido: number;
+  promedioPorVenta: number;
+  porDia: VentaDia[];
+}
+
+export interface ProductoMasVendido {
+  productoId: number;
+  productoNombre: string;
+  cantidadVendida: number;
+  montoTotal: number;
+}
+
+export interface MargenProducto {
+  productoId: number;
+  productoNombre: string;
+  precioVenta: number;
+  costoInsumos: number;
+  margen: number;
+  margenPorcentual: number;
+}
+
+export interface StockCriticoItem {
+  id: number;
+  nombre: string;
+  stockActual: number;
+  stockMinimo: number;
+}
+
+export interface StockCritico {
+  productos: StockCriticoItem[];
+  insumos: StockCriticoItem[];
+}

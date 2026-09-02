@@ -8,6 +8,8 @@ import { RecetasPage } from './pages/RecetasPage';
 import { ProduccionPage } from './pages/ProduccionPage';
 import { ProveedoresPage } from './pages/ProveedoresPage';
 import { ComprasPage } from './pages/ComprasPage';
+import { ReportesPage } from './pages/ReportesPage';
+import { ComisionesPage } from './pages/ComisionesPage';
 
 function protegida(element: ReactNode) {
   return <ProtectedRoute>{element}</ProtectedRoute>;
@@ -24,6 +26,8 @@ export default function App() {
           <Route path="/produccion" element={protegida(<ProduccionPage />)} />
           <Route path="/proveedores" element={protegida(<ProveedoresPage />)} />
           <Route path="/compras" element={protegida(<ComprasPage />)} />
+          <Route path="/reportes" element={protegida(<ReportesPage />)} />
+          <Route path="/comisiones" element={protegida(<ComisionesPage />)} />
           <Route path="*" element={<Navigate to="/pos" replace />} />
         </Routes>
       </BrowserRouter>

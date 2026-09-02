@@ -16,6 +16,8 @@ const NAV_ITEMS: NavItem[] = [
   { key: '/produccion', label: 'Producción', roles: ['DUENO', 'ENCARGADO'] },
   { key: '/proveedores', label: 'Proveedores', roles: ['DUENO', 'ENCARGADO'] },
   { key: '/compras', label: 'Compras', roles: ['DUENO', 'ENCARGADO'] },
+  { key: '/reportes', label: 'Reportes', roles: ['DUENO', 'ENCARGADO'] },
+  { key: '/comisiones', label: 'Comisiones', roles: ['DUENO'] },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {

@@ -17,9 +17,10 @@ import { DeleteOutlined, ScanOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
 import { listarProductos } from '../api/productos';
+import { listarClientes } from '../api/clientes';
 import { confirmarVenta, escanear, type ItemVentaPayload } from '../api/ventas';
 import { mensajeDeError } from '../api/client';
-import { MEDIOS_PAGO, type MedioPago, type Producto } from '../types';
+import { MEDIOS_PAGO, type Cliente, type MedioPago, type Producto } from '../types';
 
 interface ItemCarrito {
   key: string;
@@ -49,11 +50,21 @@ export function PosPage() {
   const [medioPago, setMedioPago] = useState<MedioPago>('EFECTIVO');
   const [confirmando, setConfirmando] = useState(false);
 
+  const [clientesConCuenta, setClientesConCuenta] = useState<Cliente[]>([]);
+  const [clienteId, setClienteId] = useState<number | undefined>();
+
   useEffect(() => {
     listarProductos()
       .then(setProductos)
       .catch((err) => setErrorProductos(mensajeDeError(err, 'No se pudieron cargar los productos')))
       .finally(() => setCargandoProductos(false));
+
+    listarClientes()
+      .then((clientes) => setClientesConCuenta(clientes.filter((c) => c.tieneCuentaCorriente)))
+      .catch(() => {
+        // La cuenta corriente es opcional en el flujo de venta: si no se pueden cargar los
+        // clientes, simplemente no se ofrece esa opción, no hace falta romper la pantalla.
+      });
   }, []);
 
   const total = useMemo(
@@ -120,6 +131,11 @@ export function PosPage() {
   async function handleConfirmarVenta() {
     if (carrito.length === 0) return;
 
+    if (medioPago === 'CUENTA_CORRIENTE' && !clienteId) {
+      message.warning('Elegí a qué cliente cargarle la cuenta corriente');
+      return;
+    }
+
     setConfirmando(true);
     try {
       const items: ItemVentaPayload[] = carrito.map((item) =>
@@ -128,11 +144,16 @@ export function PosPage() {
           : { productoId: item.productoId, cantidad: item.cantidad },
       );
 
-      const venta = await confirmarVenta({ medioPago, items });
+      const venta = await confirmarVenta({
+        medioPago,
+        items,
+        clienteId: medioPago === 'CUENTA_CORRIENTE' ? clienteId : undefined,
+      });
 
       message.success(`Venta #${venta.id} confirmada — total ${formatoMoneda.format(venta.total)}`);
       setCarrito([]);
       setMedioPago('EFECTIVO');
+      setClienteId(undefined);
     } catch (err) {
       message.error(mensajeDeError(err, 'No se pudo confirmar la venta'));
     } finally {
@@ -237,7 +258,29 @@ export function PosPage() {
             />
 
             <Flex justify="space-between" align="center" style={{ marginTop: 24 }}>
-              <Select value={medioPago} onChange={setMedioPago} options={MEDIOS_PAGO} style={{ width: 220 }} />
+              <Flex gap={8}>
+                <Select
+                  value={medioPago}
+                  onChange={(valor) => {
+                    setMedioPago(valor);
+                    if (valor !== 'CUENTA_CORRIENTE') setClienteId(undefined);
+                  }}
+                  options={MEDIOS_PAGO}
+                  style={{ width: 220 }}
+                />
+                {medioPago === 'CUENTA_CORRIENTE' && (
+                  <Select
+                    showSearch
+                    placeholder="Cliente"
+                    style={{ width: 220 }}
+                    value={clienteId}
+                    onChange={setClienteId}
+                    optionFilterProp="label"
+                    options={clientesConCuenta.map((c) => ({ value: c.id, label: c.nombre }))}
+                    notFoundContent="Ningún cliente tiene cuenta corriente habilitada"
+                  />
+                )}
+              </Flex>
               <Typography.Title level={3} style={{ margin: 0 }}>
                 Total: {formatoMoneda.format(total)}
               </Typography.Title>
@@ -248,7 +291,7 @@ export function PosPage() {
               size="large"
               block
               style={{ marginTop: 16 }}
-              disabled={carrito.length === 0}
+              disabled={carrito.length === 0 || (medioPago === 'CUENTA_CORRIENTE' && !clienteId)}
               loading={confirmando}
               onClick={handleConfirmarVenta}
             >

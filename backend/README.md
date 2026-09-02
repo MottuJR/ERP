@@ -156,7 +156,9 @@ Al confirmar una venta con `medioPago: CUENTA_CORRIENTE`, `VentaService` exige `
 - `application-dev.yml`: datasource y `JWT_SECRET` con defaults para desarrollo local (no usar en producción).
 - `application-prod.yml`: todo se toma de variables de entorno, sin defaults — falla rápido si falta algo.
 
-Variables de entorno relevantes: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `JWT_SECRET`, `DB_HOST`, `DB_PORT`.
+Variables de entorno relevantes: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `JWT_SECRET`, `DB_HOST`, `DB_PORT`, `CORS_ALLOWED_ORIGINS`.
+
+**CORS:** el frontend (`http://localhost:5173` en dev) y el backend (`:8080`) son orígenes distintos, así que hace falta CORS habilitado explícitamente (`SecurityConfig.corsConfigurationSource`) — sin esto el browser bloquea las requests reales aunque el preflight `OPTIONS` responda 200. En dev ya viene con ese default; en producción hay que setear `CORS_ALLOWED_ORIGINS` con el dominio real del frontend (sin default, a propósito).
 
 ## Tests
 
