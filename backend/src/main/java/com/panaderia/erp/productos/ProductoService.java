@@ -24,22 +24,22 @@ public class ProductoService {
     }
 
     public List<Producto> listarActivos() {
-        return productoRepository.findByActivoTrue();
+        return productoRepository.findByActivoTrueConCategoria();
     }
 
     public Producto obtenerPorId(Long id) {
-        return productoRepository.findById(id)
+        return productoRepository.findByIdConCategoria(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado: " + id));
     }
 
     public Producto obtenerPorCodigoBarras(String codigoBarras) {
-        return productoRepository.findByCodigoBarras(codigoBarras)
+        return productoRepository.findByCodigoBarrasConCategoria(codigoBarras)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No hay ningún producto con código de barras: " + codigoBarras));
     }
 
     public Producto obtenerPorCodigoPLU(String codigoPLU) {
-        return productoRepository.findByCodigoPLU(codigoPLU)
+        return productoRepository.findByCodigoPLUConCategoria(codigoPLU)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No hay ningún producto con código PLU: " + codigoPLU));
     }
@@ -131,7 +131,7 @@ public class ProductoService {
 
     private void validarCodigosDisponibles(String codigoBarras, String codigoPLU, Long idExcluido) {
         if (StringUtils.hasText(codigoBarras)) {
-            productoRepository.findByCodigoBarras(codigoBarras)
+            productoRepository.findByCodigoBarrasConCategoria(codigoBarras)
                     .filter(p -> !p.getId().equals(idExcluido))
                     .ifPresent(p -> {
                         throw new ConflictoException("Ya existe un producto con ese código de barras");
@@ -139,7 +139,7 @@ public class ProductoService {
         }
 
         if (StringUtils.hasText(codigoPLU)) {
-            productoRepository.findByCodigoPLU(codigoPLU)
+            productoRepository.findByCodigoPLUConCategoria(codigoPLU)
                     .filter(p -> !p.getId().equals(idExcluido))
                     .ifPresent(p -> {
                         throw new ConflictoException("Ya existe un producto con ese código PLU");

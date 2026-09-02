@@ -132,4 +132,10 @@ Variables de entorno relevantes: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSW
 ./mvnw test
 ```
 
-Los tests de integración (`*IT`, por ejemplo `AuthControllerIT`) usan Testcontainers y levantan un Postgres real en Docker — Docker tiene que estar corriendo. `JwtServiceTest` es un test unitario puro, no necesita Docker.
+Esto corre los tests unitarios (JUnit/Mockito) más `ErpApplicationTests`. **Los tests de integración (que terminan en `*IT`, por ejemplo `AuthControllerIT` y `ProduccionCompraFlowIT`) no se ejecutan con este comando** — Surefire por defecto solo agarra `*Test`/`*Tests` (el patrón `*IT` es de Failsafe, que este proyecto no tiene configurado). Para correrlos:
+
+```bash
+./mvnw test "-Dtest=AuthControllerIT,ProduccionCompraFlowIT"
+```
+
+Los `*IT` usan Testcontainers y levantan un Postgres real en Docker — Docker Desktop tiene que estar corriendo. El contenedor se comparte entre todas las clases de test dentro de la misma corrida (patrón "singleton container": se levanta una vez en un bloque estático en `AbstractIntegrationTest`, no vía `@Testcontainers`/`@Container`, porque esas anotaciones apagan el contenedor al terminar la primera clase que lo usa, rompiendo las que corren después).

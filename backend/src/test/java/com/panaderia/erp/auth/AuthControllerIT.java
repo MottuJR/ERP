@@ -19,8 +19,11 @@ class AuthControllerIT extends AbstractIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    // Instancia propia y no la del contexto de Spring: desde Spring Boot 4 / Jackson 3, el
+    // ObjectMapper que autoconfigura el framework es tools.jackson.databind.ObjectMapper, no
+    // com.fasterxml.jackson.databind.ObjectMapper. Para parsear JSON en el test no hace falta
+    // el bean de la app, alcanza con una instancia de Jackson 2 standalone.
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void loginConCredencialesValidasDevuelveToken() throws Exception {
