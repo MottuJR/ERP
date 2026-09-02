@@ -25,6 +25,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     @Query("select p from Producto p join fetch p.categoria where p.activo = true")
     List<Producto> findByActivoTrueConCategoria();
 
+    @Query("select p from Producto p join fetch p.categoria where p.activo = true and p.stockActual <= p.stockMinimo")
+    List<Producto> findConStockCritico();
+
     boolean existsByCodigoBarras(String codigoBarras);
 
     boolean existsByCodigoPLU(String codigoPLU);

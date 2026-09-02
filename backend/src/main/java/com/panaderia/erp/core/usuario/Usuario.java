@@ -10,6 +10,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "usuarios")
 public class Usuario extends Auditable {
@@ -33,6 +35,13 @@ public class Usuario extends Auditable {
 
     @Column(nullable = false)
     private boolean activo = true;
+
+    /**
+     * Porcentaje de comisión (0-100) usado por el módulo de comisiones/liquidaciones.
+     * Nulo si este usuario no cobra comisión (por ejemplo, el dueño).
+     */
+    @Column(name = "porcentaje_comision", precision = 5, scale = 2)
+    private BigDecimal porcentajeComision;
 
     protected Usuario() {
     }
@@ -87,5 +96,13 @@ public class Usuario extends Auditable {
 
     public void setActivo(boolean activo) {
         this.activo = activo;
+    }
+
+    public BigDecimal getPorcentajeComision() {
+        return porcentajeComision;
+    }
+
+    public void setPorcentajeComision(BigDecimal porcentajeComision) {
+        this.porcentajeComision = porcentajeComision;
     }
 }

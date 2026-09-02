@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 
 @Service
 public class OrdenProduccionService {
@@ -73,6 +75,13 @@ public class OrdenProduccionService {
         inventarioService.registrarEntradaProductoPorProduccion(producto.getId(), request.cantidad(), orden.getId());
 
         return aResponse(orden, producto.getNombre());
+    }
+
+    /**
+     * Órdenes de producción confirmadas en un período. La usa el módulo de comisiones.
+     */
+    public List<OrdenProduccion> listarEntrePeriodo(Instant desde, Instant hasta) {
+        return ordenProduccionRepository.findByFechaBetween(desde, hasta);
     }
 
     private OrdenProduccionResponse aResponse(OrdenProduccion orden, String productoNombre) {

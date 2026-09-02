@@ -43,6 +43,13 @@ public class InventarioService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Insumo no encontrado: " + id));
     }
 
+    /**
+     * Insumos cuyo stock actual ya cayó al mínimo o por debajo. La usa el módulo de reportes.
+     */
+    public List<Insumo> listarConStockCritico() {
+        return insumoRepository.findConStockCritico();
+    }
+
     @Transactional
     public Insumo crearInsumo(InsumoRequest request) {
         return insumoRepository.save(new Insumo(

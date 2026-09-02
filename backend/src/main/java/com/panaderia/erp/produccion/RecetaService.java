@@ -16,7 +16,9 @@ import com.panaderia.erp.productos.TipoProducto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -38,6 +40,27 @@ public class RecetaService {
         return recetaRepository.findByProductoId(productoId)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "El producto " + productoId + " no tiene una receta cargada"));
+    }
+
+    /**
+     * Igual que {@link #obtenerPorProducto}, pero sin lanzar si no hay receta cargada. La usa
+     * el módulo de reportes para calcular el margen solo de los productos que sí tienen receta.
+     */
+    public Optional<Receta> buscarPorProducto(Long productoId) {
+        return recetaRepository.findByProductoId(productoId);
+    }
+
+    /**
+     * Costo total de insumos de una receta (suma de cantidad × costoUnitario de cada ítem).
+     * La usa el módulo de reportes para calcular el margen por producto.
+     */
+    public BigDecimal costoInsumos(Receta receta) {
+        return receta.getItems().stream()
+                .map(item -> {
+                    Insumo insumo = inventarioService.obtenerInsumoPorId(item.getInsumoId());
+                    return insumo.getCostoUnitario().multiply(item.getCantidad());
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     @Transactional

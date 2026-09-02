@@ -1,0 +1,134 @@
+package com.panaderia.erp.reportes;
+
+import com.panaderia.erp.core.util.RangoFechas;
+import com.panaderia.erp.inventario.InventarioService;
+import com.panaderia.erp.produccion.Receta;
+import com.panaderia.erp.produccion.RecetaService;
+import com.panaderia.erp.productos.Producto;
+import com.panaderia.erp.productos.ProductoService;
+import com.panaderia.erp.productos.TipoProducto;
+import com.panaderia.erp.reportes.dto.MargenProductoResponse;
+import com.panaderia.erp.reportes.dto.ProductoMasVendidoResponse;
+import com.panaderia.erp.reportes.dto.ReporteVentasResponse;
+import com.panaderia.erp.reportes.dto.StockCriticoItemResponse;
+import com.panaderia.erp.reportes.dto.StockCriticoResponse;
+import com.panaderia.erp.reportes.dto.VentaDiaResponse;
+import com.panaderia.erp.ventas.Venta;
+import com.panaderia.erp.ventas.VentaService;
+import com.panaderia.erp.ventas.dto.ProductoVendidoResumen;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+/**
+ * Solo lee de otros módulos (Venta, Producto, Receta/Insumo) para armar reportes — no modifica
+ * nada, como dice la sección 3 del documento de diseño.
+ */
+@Service
+public class ReportesService {
+
+    private static final BigDecimal CIEN = BigDecimal.valueOf(100);
+
+    private final VentaService ventaService;
+    private final ProductoService productoService;
+    private final InventarioService inventarioService;
+    private final RecetaService recetaService;
+
+    public ReportesService(VentaService ventaService, ProductoService productoService,
+                            InventarioService inventarioService, RecetaService recetaService) {
+        this.ventaService = ventaService;
+        this.productoService = productoService;
+        this.inventarioService = inventarioService;
+        this.recetaService = recetaService;
+    }
+
+    public ReporteVentasResponse reporteVentas(LocalDate desde, LocalDate hasta) {
+        List<Venta> ventas = ventaService.listarEntrePeriodo(RangoFechas.inicioDelDia(desde), RangoFechas.finDelDia(hasta));
+
+        BigDecimal totalVendido = ventas.stream().map(Venta::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+        long cantidadVentas = ventas.size();
+        BigDecimal promedio = cantidadVentas == 0
+                ? BigDecimal.ZERO
+                : totalVendido.divide(BigDecimal.valueOf(cantidadVentas), 2, RoundingMode.HALF_UP);
+
+        List<VentaDiaResponse> porDia = agruparPorDia(ventas);
+
+        return new ReporteVentasResponse(desde, hasta, cantidadVentas, totalVendido, promedio, porDia);
+    }
+
+    public List<ProductoMasVendidoResponse> productosMasVendidos(LocalDate desde, LocalDate hasta, int limite) {
+        List<ProductoVendidoResumen> resumenes = ventaService.productosMasVendidos(
+                RangoFechas.inicioDelDia(desde), RangoFechas.finDelDia(hasta));
+
+        return resumenes.stream()
+                .limit(limite)
+                .map(r -> {
+                    Producto producto = productoService.obtenerPorId(r.productoId());
+                    return new ProductoMasVendidoResponse(
+                            producto.getId(), producto.getNombre(), r.cantidadVendida(), r.montoTotal());
+                })
+                .toList();
+    }
+
+    public List<MargenProductoResponse> margenPorProducto() {
+        return productoService.listarActivos().stream()
+                .filter(p -> p.getTipo() == TipoProducto.ELABORADO)
+                .map(this::calcularMargen)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    public StockCriticoResponse stockCritico() {
+        List<StockCriticoItemResponse> productos = productoService.listarConStockCritico().stream()
+                .map(p -> new StockCriticoItemResponse(p.getId(), p.getNombre(), p.getStockActual(), p.getStockMinimo()))
+                .toList();
+
+        List<StockCriticoItemResponse> insumos = inventarioService.listarConStockCritico().stream()
+                .map(i -> new StockCriticoItemResponse(i.getId(), i.getNombre(), i.getStockActual(), i.getStockMinimo()))
+                .toList();
+
+        return new StockCriticoResponse(productos, insumos);
+    }
+
+    private MargenProductoResponse calcularMargen(Producto producto) {
+        return recetaService.buscarPorProducto(producto.getId())
+                .map((Receta receta) -> {
+                    BigDecimal costoInsumos = recetaService.costoInsumos(receta);
+                    BigDecimal margen = producto.getPrecioVenta().subtract(costoInsumos);
+                    BigDecimal margenPorcentual = producto.getPrecioVenta().compareTo(BigDecimal.ZERO) == 0
+                            ? BigDecimal.ZERO
+                            : margen.multiply(CIEN).divide(producto.getPrecioVenta(), 2, RoundingMode.HALF_UP);
+
+                    return new MargenProductoResponse(
+                            producto.getId(), producto.getNombre(), producto.getPrecioVenta(),
+                            costoInsumos, margen, margenPorcentual);
+                })
+                .orElse(null);
+    }
+
+    private List<VentaDiaResponse> agruparPorDia(List<Venta> ventas) {
+        ZoneId zona = ZoneId.systemDefault();
+
+        Map<LocalDate, List<Venta>> porDia = ventas.stream()
+                .collect(Collectors.groupingBy(v -> v.getFecha().atZone(zona).toLocalDate(), TreeMap::new, Collectors.toList()));
+
+        return porDia.entrySet().stream()
+                .map(entry -> {
+                    BigDecimal total = entry.getValue().stream()
+                            .map(Venta::getTotal)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    return new VentaDiaResponse(entry.getKey(), entry.getValue().size(), total);
+                })
+                .sorted(Comparator.comparing(VentaDiaResponse::fecha))
+                .toList();
+    }
+}

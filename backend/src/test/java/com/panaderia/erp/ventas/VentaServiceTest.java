@@ -1,5 +1,6 @@
 package com.panaderia.erp.ventas;
 
+import com.panaderia.erp.clientes.ClienteService;
 import com.panaderia.erp.core.exception.ConflictoException;
 import com.panaderia.erp.core.exception.ValidacionNegocioException;
 import com.panaderia.erp.core.usuario.Rol;
@@ -42,6 +43,9 @@ class VentaServiceTest {
     private VentaRepository ventaRepository;
 
     @Mock
+    private DetalleVentaRepository detalleVentaRepository;
+
+    @Mock
     private EscaneoService escaneoService;
 
     @Mock
@@ -53,11 +57,15 @@ class VentaServiceTest {
     @Mock
     private UsuarioRepository usuarioRepository;
 
+    @Mock
+    private ClienteService clienteService;
+
     private VentaService ventaService;
 
     @BeforeEach
     void setUp() {
-        ventaService = new VentaService(ventaRepository, escaneoService, productoService, inventarioService, usuarioRepository);
+        ventaService = new VentaService(ventaRepository, detalleVentaRepository, escaneoService, productoService,
+                inventarioService, usuarioRepository, clienteService);
 
         Usuario vendedor = new Usuario("Vendedora", EMAIL_VENDEDOR, "hash", Rol.VENDEDOR);
         ReflectionTestUtils.setField(vendedor, "id", 1L);

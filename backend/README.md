@@ -1,6 +1,6 @@
 # ERP Panadería — Backend
 
-Fase 0 (setup: proyecto base, Postgres vía Flyway, autenticación JWT), Fase 1 (Productos, Inventario, Caja, Ventas/POS) y Fase 2 (Producción, Compras) del roadmap.
+Fase 0 (setup: proyecto base, Postgres vía Flyway, autenticación JWT), Fase 1 (Productos, Inventario, Caja, Ventas/POS), Fase 2 (Producción, Compras) y Fase 3 (Reportes, Comisiones/Liquidaciones, Cuentas corrientes) del roadmap.
 
 ## Stack
 
@@ -113,6 +113,38 @@ Acceso: `DUENO`/`ENCARGADO` (no `VENDEDOR`).
 Acceso: `DUENO`/`ENCARGADO`.
 
 **Política de costo:** `costoUnitario` del insumo se pisa con el precio de la última compra (sin promedio ponderado). Es la opción más simple para el MVP; si hace falta costo promedio ponderado más adelante, es un cambio acotado a `InventarioService.registrarEntradaInsumoPorCompra`.
+
+## Endpoints de reportes
+
+Todos con `desde`/`hasta` como fecha `yyyy-MM-dd` (rango inclusivo).
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/api/reportes/ventas?desde=&hasta=` | Total vendido, cantidad de ventas, promedio y desglose por día |
+| GET | `/api/reportes/productos-mas-vendidos?desde=&hasta=&limite=10` | Ranking por cantidad vendida |
+| GET | `/api/reportes/margen-productos` | Para cada producto `ELABORADO` con receta: `precioVenta - costo de insumos` |
+| GET | `/api/reportes/stock-critico` | Productos e insumos con `stockActual <= stockMinimo` |
+
+Acceso: `DUENO`/`ENCARGADO`. `margen-productos` solo incluye productos con receta cargada (sin receta no hay forma de calcular el costo).
+
+## Endpoints de comisiones/liquidaciones
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/api/comisiones/vendedores?desde=&hasta=` | Por cada (turno, vendedor): `total vendido en ese turno × porcentaje de comisión del vendedor` |
+| GET | `/api/comisiones/produccion?desde=&hasta=` | Por cada orden de producción: `cantidad producida × precio del producto × porcentaje de comisión del empleado` |
+
+Acceso: solo `DUENO` (es información de sueldos). El porcentaje de comisión vive en `Usuario.porcentajeComision` (nullable — un usuario sin porcentaje asignado da comisión 0), editable con `PUT /api/usuarios/{id}/comision`. **Se calcula on-demand, no se persiste como movimiento** — es una de las decisiones que la sección 7 del documento dejaba pendientes, resuelta así para esta fase.
+
+## Endpoints de clientes y cuenta corriente
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET/POST/PUT/DELETE | `/api/clientes/**` | CRUD de clientes (`tieneCuentaCorriente` habilita que se les venda a cuenta) |
+| GET | `/api/clientes/{id}/saldo` | `suma(Venta.total con medioPago=CUENTA_CORRIENTE) - suma(PagoCliente.monto)` |
+| GET/POST | `/api/clientes/{id}/pagos` | Historial y registro de pagos contra la cuenta |
+
+Al confirmar una venta con `medioPago: CUENTA_CORRIENTE`, `VentaService` exige `clienteId` y valida que ese cliente tenga `tieneCuentaCorriente = true` (si no, `400`).
 
 ## Roles
 

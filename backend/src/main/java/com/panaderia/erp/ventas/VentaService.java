@@ -1,5 +1,6 @@
 package com.panaderia.erp.ventas;
 
+import com.panaderia.erp.clientes.ClienteService;
 import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
 import com.panaderia.erp.core.exception.ValidacionNegocioException;
 import com.panaderia.erp.core.usuario.Usuario;
@@ -11,12 +12,15 @@ import com.panaderia.erp.ventas.dto.ConfirmarVentaRequest;
 import com.panaderia.erp.ventas.dto.DetalleVentaResponse;
 import com.panaderia.erp.ventas.dto.EscaneoResponse;
 import com.panaderia.erp.ventas.dto.ItemVentaRequest;
+import com.panaderia.erp.ventas.dto.ProductoVendidoResumen;
 import com.panaderia.erp.ventas.dto.VentaResponse;
+import com.panaderia.erp.ventas.dto.VentaTurnoResumen;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,21 +28,27 @@ import java.util.List;
 public class VentaService {
 
     private final VentaRepository ventaRepository;
+    private final DetalleVentaRepository detalleVentaRepository;
     private final EscaneoService escaneoService;
     private final ProductoService productoService;
     private final InventarioService inventarioService;
     private final UsuarioRepository usuarioRepository;
+    private final ClienteService clienteService;
 
     public VentaService(VentaRepository ventaRepository,
+                         DetalleVentaRepository detalleVentaRepository,
                          EscaneoService escaneoService,
                          ProductoService productoService,
                          InventarioService inventarioService,
-                         UsuarioRepository usuarioRepository) {
+                         UsuarioRepository usuarioRepository,
+                         ClienteService clienteService) {
         this.ventaRepository = ventaRepository;
+        this.detalleVentaRepository = detalleVentaRepository;
         this.escaneoService = escaneoService;
         this.productoService = productoService;
         this.inventarioService = inventarioService;
         this.usuarioRepository = usuarioRepository;
+        this.clienteService = clienteService;
     }
 
     public EscaneoResponse escanear(String codigo, BigDecimal cantidadManual) {
@@ -56,6 +66,14 @@ public class VentaService {
     public VentaResponse confirmarVenta(ConfirmarVentaRequest request, String emailUsuario) {
         Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario autenticado no encontrado"));
+
+        if (request.medioPago() == MedioPago.CUENTA_CORRIENTE) {
+            if (request.clienteId() == null) {
+                throw new ValidacionNegocioException(
+                        "Una venta a cuenta corriente necesita indicar el cliente");
+            }
+            clienteService.validarTieneCuentaCorriente(request.clienteId());
+        }
 
         Venta venta = new Venta(request.clienteId(), usuario.getId(), request.cajaId(), request.medioPago());
         List<EscaneoService.ItemResuelto> resueltos = new ArrayList<>();
@@ -84,6 +102,41 @@ public class VentaService {
         }
 
         return aVentaResponse(venta, resueltos.stream().map(EscaneoService.ItemResuelto::producto).toList());
+    }
+
+    /**
+     * Total vendido a un cliente con medioPago CUENTA_CORRIENTE. Lo usa el módulo de clientes
+     * para calcular el saldo de cuenta corriente.
+     */
+    public BigDecimal totalVendidoACuentaCorriente(Long clienteId) {
+        return ventaRepository.sumTotalCuentaCorrientePorCliente(clienteId);
+    }
+
+    /**
+     * Ventas confirmadas en un período. La usa el módulo de reportes.
+     */
+    public List<Venta> listarEntrePeriodo(Instant desde, Instant hasta) {
+        return ventaRepository.findByFechaBetween(desde, hasta);
+    }
+
+    /**
+     * Total vendido por cada (turno, vendedor) en un período — solo ventas con caja asignada.
+     * La usa el módulo de comisiones para calcular la comisión de vendedores.
+     */
+    public List<VentaTurnoResumen> totalVendidoPorTurnoYUsuario(Instant desde, Instant hasta) {
+        return ventaRepository.totalVendidoPorTurnoYUsuario(desde, hasta).stream()
+                .map(p -> new VentaTurnoResumen(p.getCajaId(), p.getUsuarioId(), p.getTotalVendido()))
+                .toList();
+    }
+
+    /**
+     * Cantidad y monto vendido por producto en un período, ordenado de más a menos vendido.
+     * La usa el módulo de reportes.
+     */
+    public List<ProductoVendidoResumen> productosMasVendidos(Instant desde, Instant hasta) {
+        return detalleVentaRepository.productosMasVendidos(desde, hasta).stream()
+                .map(p -> new ProductoVendidoResumen(p.getProductoId(), p.getCantidadVendida(), p.getMontoTotal()))
+                .toList();
     }
 
     private EscaneoService.ItemResuelto resolverItem(ItemVentaRequest item) {

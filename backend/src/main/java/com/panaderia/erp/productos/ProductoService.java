@@ -27,6 +27,13 @@ public class ProductoService {
         return productoRepository.findByActivoTrueConCategoria();
     }
 
+    /**
+     * Productos activos cuyo stock actual ya cayó al mínimo o por debajo. La usa el módulo de reportes.
+     */
+    public List<Producto> listarConStockCritico() {
+        return productoRepository.findConStockCritico();
+    }
+
     public Producto obtenerPorId(Long id) {
         return productoRepository.findByIdConCategoria(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado: " + id));

@@ -1,8 +1,10 @@
 package com.panaderia.erp.auth.controller;
 
+import com.panaderia.erp.auth.dto.ActualizarComisionRequest;
 import com.panaderia.erp.auth.dto.CrearUsuarioRequest;
 import com.panaderia.erp.auth.dto.UsuarioResponse;
 import com.panaderia.erp.core.exception.ConflictoException;
+import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
 import com.panaderia.erp.core.usuario.Usuario;
 import com.panaderia.erp.core.usuario.UsuarioRepository;
 import jakarta.validation.Valid;
@@ -10,8 +12,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +25,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/usuarios")
+@PreAuthorize("hasRole('DUENO')")
 public class UsuarioController {
 
     private final UsuarioRepository usuarioRepository;
@@ -31,7 +37,6 @@ public class UsuarioController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('DUENO')")
     public List<UsuarioResponse> listar() {
         return usuarioRepository.findAll().stream()
                 .map(UsuarioResponse::from)
@@ -39,7 +44,6 @@ public class UsuarioController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('DUENO')")
     public ResponseEntity<UsuarioResponse> crear(@Valid @RequestBody CrearUsuarioRequest request) {
         if (usuarioRepository.existsByEmail(request.email())) {
             throw new ConflictoException("Ya existe un usuario con ese email");
@@ -50,9 +54,22 @@ public class UsuarioController {
                 request.email(),
                 passwordEncoder.encode(request.password()),
                 request.rol());
+        usuario.setPorcentajeComision(request.porcentajeComision());
 
         usuario = usuarioRepository.save(usuario);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(UsuarioResponse.from(usuario));
+    }
+
+    @PutMapping("/{id}/comision")
+    @Transactional
+    public UsuarioResponse actualizarComision(@PathVariable Long id,
+                                               @Valid @RequestBody ActualizarComisionRequest request) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado: " + id));
+
+        usuario.setPorcentajeComision(request.porcentajeComision());
+
+        return UsuarioResponse.from(usuario);
     }
 }
