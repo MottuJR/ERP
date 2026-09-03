@@ -6,6 +6,7 @@ import { AppLayout } from '../layout/AppLayout';
 import { listarProductos } from '../api/productos';
 import { confirmarOrdenProduccion, obtenerReceta } from '../api/produccion';
 import { mensajeDeError } from '../api/client';
+import { ABREVIATURA_UNIDAD_MEDIDA } from '../types';
 import type { Producto, Receta, RecetaItem } from '../types';
 
 export function ProduccionPage() {
@@ -47,7 +48,7 @@ export function ProduccionPage() {
   }
 
   const productoSeleccionado = productos.find((p) => p.id === productoId);
-  const unidadProducto = productoSeleccionado?.seVendePorPeso ? 'kg' : 'unidades';
+  const unidadProducto = productoSeleccionado ? ABREVIATURA_UNIDAD_MEDIDA[productoSeleccionado.unidadMedida] : '';
 
   async function handleConfirmar() {
     if (!productoId || !cantidad || cantidad <= 0) return;

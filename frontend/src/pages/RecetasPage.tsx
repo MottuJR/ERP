@@ -8,6 +8,7 @@ import { actualizarProducto, listarProductos } from '../api/productos';
 import { listarInsumos } from '../api/inventario';
 import { actualizarReceta, crearReceta, obtenerReceta } from '../api/produccion';
 import { mensajeDeError } from '../api/client';
+import { ABREVIATURA_UNIDAD_MEDIDA } from '../types';
 import type { Insumo, Producto } from '../types';
 
 interface FilaReceta {
@@ -65,6 +66,7 @@ export function RecetasPage() {
   }
 
   const productoSeleccionado = productos.find((p) => p.id === productoId);
+  const unidadProducto = productoSeleccionado ? ABREVIATURA_UNIDAD_MEDIDA[productoSeleccionado.unidadMedida] : '';
 
   const costoUnitarioPorInsumo = useMemo(
     () => new Map(insumos.map((i) => [i.id, i.costoUnitario])),
@@ -249,8 +251,7 @@ export function RecetasPage() {
 
               <Flex align="center" gap={8}>
                 <Typography.Text>
-                  Rendimiento — cuánto {productoSeleccionado?.seVendePorPeso ? '(en kg)' : '(en unidades)'} da esta
-                  receta tal como está cargada abajo:
+                  Rendimiento — cuánto (en {unidadProducto}) da esta receta tal como está cargada abajo:
                 </Typography.Text>
                 <InputNumber
                   min={0.001}
@@ -258,7 +259,7 @@ export function RecetasPage() {
                   style={{ width: 120 }}
                   value={rendimiento}
                   onChange={(v) => setRendimiento(v)}
-                  addonAfter={productoSeleccionado?.seVendePorPeso ? 'kg' : 'un.'}
+                  addonAfter={unidadProducto}
                 />
               </Flex>
 
@@ -290,7 +291,8 @@ export function RecetasPage() {
                         {formatoMoneda.format(costoTotal)}
                       </Typography.Title>
                       <Typography.Text type="secondary">
-                        Costo por {productoSeleccionado?.seVendePorPeso ? 'kg' : 'unidad'} vendible:{' '}
+                        Costo por {productoSeleccionado?.unidadMedida === 'UNIDAD' ? 'unidad' : unidadProducto}{' '}
+                        vendible:{' '}
                         {costoPorUnidad !== null ? formatoMoneda.format(costoPorUnidad) : '—'}
                       </Typography.Text>
                       <br />

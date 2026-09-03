@@ -19,6 +19,16 @@ export interface LoginResponse {
 export type TipoProducto = 'ELABORADO' | 'REVENTA';
 export type UnidadMedida = 'UNIDAD' | 'KG' | 'GRAMO' | 'LITRO';
 
+// La unidad real de un producto/insumo es unidadMedida, no seVendePorPeso (que solo dice si usa
+// código de barras fijo o etiqueta de balanza PLU) — con esto evitamos mostrar "kg" para un
+// producto cuya unidad de medida es en realidad "unidad".
+export const ABREVIATURA_UNIDAD_MEDIDA: Record<UnidadMedida, string> = {
+  UNIDAD: 'unidades',
+  KG: 'kg',
+  GRAMO: 'g',
+  LITRO: 'L',
+};
+
 export interface Producto {
   id: number;
   nombre: string;
