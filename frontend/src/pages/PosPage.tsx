@@ -124,6 +124,8 @@ export function PosPage() {
     }
   }
 
+  const productoManualSeleccionado = productos.find((p) => p.id === productoManualId);
+
   function handleAgregarManual() {
     const producto = productos.find((p) => p.id === productoManualId);
     if (!producto || !cantidadManual || cantidadManual <= 0) return;
@@ -293,7 +295,10 @@ export function PosPage() {
                 style={{ flex: 1 }}
                 loading={cargandoProductos}
                 value={productoManualId}
-                onChange={setProductoManualId}
+                onChange={(v) => {
+                  setProductoManualId(v);
+                  setCantidadManual(1);
+                }}
                 optionFilterProp="label"
                 options={productos.map((p) => ({
                   value: p.id,
@@ -301,7 +306,8 @@ export function PosPage() {
                 }))}
               />
               <InputNumber
-                min={1}
+                min={productoManualSeleccionado?.seVendePorPeso ? 0.001 : 1}
+                step={productoManualSeleccionado?.seVendePorPeso ? 0.1 : 1}
                 value={cantidadManual}
                 onChange={(v) => setCantidadManual(v)}
                 onPressEnter={handleAgregarManual}
