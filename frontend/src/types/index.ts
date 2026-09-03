@@ -50,6 +50,28 @@ export const MEDIOS_PAGO: { value: MedioPago; label: string }[] = [
   { value: 'CUENTA_CORRIENTE', label: 'Cuenta corriente' },
 ];
 
+export type EstadoCaja = 'ABIERTA' | 'CERRADA';
+export type TipoMovimientoCaja = 'INGRESO' | 'EGRESO';
+
+export interface Caja {
+  id: number;
+  fechaApertura: string;
+  fechaCierre: string | null;
+  montoInicial: number;
+  montoFinal: number | null;
+  usuarioId: number;
+  estado: EstadoCaja;
+}
+
+export interface MovimientoCaja {
+  id: number;
+  cajaId: number;
+  tipo: TipoMovimientoCaja;
+  monto: number;
+  concepto: string;
+  fecha: string;
+}
+
 export interface EscaneoResponse {
   productoId: number;
   productoNombre: string;

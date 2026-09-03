@@ -16,12 +16,14 @@ import {
 import type { InputRef } from 'antd';
 import { DeleteOutlined, ScanOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { Link } from 'react-router-dom';
 import { AppLayout } from '../layout/AppLayout';
 import { listarProductos } from '../api/productos';
 import { listarClientes } from '../api/clientes';
+import { obtenerCajaActual } from '../api/caja';
 import { confirmarVenta, escanear, type ItemVentaPayload } from '../api/ventas';
 import { mensajeDeError } from '../api/client';
-import { MEDIOS_PAGO, type Cliente, type MedioPago, type Producto } from '../types';
+import { MEDIOS_PAGO, type Caja, type Cliente, type MedioPago, type Producto } from '../types';
 
 interface ItemCarrito {
   key: string;
@@ -54,6 +56,9 @@ export function PosPage() {
   const [clientesConCuenta, setClientesConCuenta] = useState<Cliente[]>([]);
   const [clienteId, setClienteId] = useState<number | undefined>();
 
+  const [cajaActual, setCajaActual] = useState<Caja | null>(null);
+  const [cargandoCaja, setCargandoCaja] = useState(true);
+
   // El lector láser escribe donde esté el foco y termina con Enter, como un teclado. Si el
   // foco se queda en un botón después de agregar un ítem, el siguiente escaneo se pierde —
   // por eso hay que devolverlo acá después de cada acción (éxito, error, o al confirmar).
@@ -75,6 +80,11 @@ export function PosPage() {
         // La cuenta corriente es opcional en el flujo de venta: si no se pueden cargar los
         // clientes, simplemente no se ofrece esa opción, no hace falta romper la pantalla.
       });
+
+    obtenerCajaActual()
+      .then(setCajaActual)
+      .catch((err) => message.error(mensajeDeError(err, 'No se pudo consultar la caja actual')))
+      .finally(() => setCargandoCaja(false));
   }, []);
 
   const total = useMemo(
@@ -143,7 +153,7 @@ export function PosPage() {
   }
 
   async function handleConfirmarVenta() {
-    if (carrito.length === 0) return;
+    if (carrito.length === 0 || !cajaActual) return;
 
     if (medioPago === 'CUENTA_CORRIENTE' && !clienteId) {
       message.warning('Elegí a qué cliente cargarle la cuenta corriente');
@@ -161,6 +171,7 @@ export function PosPage() {
       const venta = await confirmarVenta({
         medioPago,
         items,
+        cajaId: cajaActual.id,
         clienteId: medioPago === 'CUENTA_CORRIENTE' ? clienteId : undefined,
       });
 
@@ -182,14 +193,14 @@ export function PosPage() {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey && e.key === 'Enter') {
         e.preventDefault();
-        if (carrito.length > 0 && !confirmando) {
+        if (carrito.length > 0 && !confirmando && cajaActual) {
           handleConfirmarVenta();
         }
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [carrito, confirmando]);
+  }, [carrito, confirmando, cajaActual]);
 
   const columnas: ColumnsType<ItemCarrito> = [
     { title: 'Producto', dataIndex: 'productoNombre' },
@@ -234,6 +245,21 @@ export function PosPage() {
   return (
     <AppLayout>
       {errorProductos && <Alert type="error" title={errorProductos} showIcon style={{ marginBottom: 16 }} />}
+
+      {!cargandoCaja && !cajaActual && (
+        <Alert
+          type="warning"
+          title="No hay ninguna caja abierta"
+          description={
+            <>
+              Las ventas quedan sin turno asignado y no se contabilizan en las comisiones. Abrí una en{' '}
+              <Link to="/caja">Caja</Link> antes de vender.
+            </>
+          }
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
 
       <Row gutter={24}>
         <Col span={10}>
@@ -326,7 +352,9 @@ export function PosPage() {
               size="large"
               block
               style={{ marginTop: 16 }}
-              disabled={carrito.length === 0 || (medioPago === 'CUENTA_CORRIENTE' && !clienteId)}
+              disabled={
+                carrito.length === 0 || !cajaActual || (medioPago === 'CUENTA_CORRIENTE' && !clienteId)
+              }
               loading={confirmando}
               onClick={handleConfirmarVenta}
             >

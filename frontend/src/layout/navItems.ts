@@ -10,6 +10,7 @@ export interface NavItem {
 // (para no mostrar links a los que no tienen acceso) como las rutas (para bloquear el acceso
 // directo por URL) — así no hay forma de que queden desincronizados.
 export const NAV_ITEMS: NavItem[] = [
+  { key: '/caja', label: 'Caja', roles: ['DUENO', 'ENCARGADO', 'VENDEDOR'] },
   { key: '/pos', label: 'Venta', roles: ['DUENO', 'ENCARGADO', 'VENDEDOR'] },
   { key: '/productos', label: 'Productos', roles: ['DUENO', 'ENCARGADO'] },
   { key: '/insumos', label: 'Insumos', roles: ['DUENO', 'ENCARGADO'] },
