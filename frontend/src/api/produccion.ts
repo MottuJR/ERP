@@ -11,13 +11,21 @@ export async function obtenerReceta(productoId: number): Promise<Receta> {
   return data;
 }
 
-export async function crearReceta(productoId: number, items: RecetaItemPayload[]): Promise<Receta> {
-  const { data } = await apiClient.post<Receta>('/api/produccion/recetas', { productoId, items });
+export async function crearReceta(
+  productoId: number,
+  rendimiento: number,
+  items: RecetaItemPayload[],
+): Promise<Receta> {
+  const { data } = await apiClient.post<Receta>('/api/produccion/recetas', { productoId, rendimiento, items });
   return data;
 }
 
-export async function actualizarReceta(productoId: number, items: RecetaItemPayload[]): Promise<Receta> {
-  const { data } = await apiClient.put<Receta>(`/api/produccion/recetas/${productoId}`, { items });
+export async function actualizarReceta(
+  productoId: number,
+  rendimiento: number,
+  items: RecetaItemPayload[],
+): Promise<Receta> {
+  const { data } = await apiClient.put<Receta>(`/api/produccion/recetas/${productoId}`, { rendimiento, items });
   return data;
 }
 

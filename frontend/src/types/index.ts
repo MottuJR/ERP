@@ -163,6 +163,7 @@ export interface Receta {
   id: number;
   productoId: number;
   productoNombre: string;
+  rendimiento: number;
   items: RecetaItem[];
 }
 

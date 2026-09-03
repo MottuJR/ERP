@@ -51,8 +51,10 @@ public class RecetaService {
     }
 
     /**
-     * Costo total de insumos de una receta (suma de cantidad × costoUnitario de cada ítem).
-     * La usa el módulo de reportes para calcular el margen por producto.
+     * Costo total de insumos de la tanda completa de una receta (suma de cantidad × costoUnitario
+     * de cada ítem) — todavía no es el costo por unidad de producto, hay que dividirlo por
+     * {@link Receta#getRendimiento()}. La usa el módulo de reportes para calcular el margen por
+     * producto.
      */
     public BigDecimal costoInsumos(Receta receta) {
         return receta.getItems().stream()
@@ -73,7 +75,7 @@ public class RecetaService {
 
         validarItems(request.items());
 
-        Receta receta = new Receta(producto.getId());
+        Receta receta = new Receta(producto.getId(), request.rendimiento());
         request.items().forEach(item -> receta.agregarItem(item.insumoId(), item.cantidad()));
 
         return recetaRepository.save(receta);
@@ -85,6 +87,7 @@ public class RecetaService {
 
         validarItems(request.items());
 
+        receta.setRendimiento(request.rendimiento());
         receta.limpiarItems();
         request.items().forEach(item -> receta.agregarItem(item.insumoId(), item.cantidad()));
 
@@ -102,7 +105,8 @@ public class RecetaService {
                 })
                 .toList();
 
-        return new RecetaResponse(receta.getId(), producto.getId(), producto.getNombre(), items);
+        return new RecetaResponse(
+                receta.getId(), producto.getId(), producto.getNombre(), receta.getRendimiento(), items);
     }
 
     private void validarItems(List<RecetaItemRequest> items) {

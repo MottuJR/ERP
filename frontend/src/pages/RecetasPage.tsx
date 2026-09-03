@@ -25,6 +25,7 @@ export function RecetasPage() {
 
   const [productoId, setProductoId] = useState<number | undefined>();
   const [filas, setFilas] = useState<FilaReceta[]>([]);
+  const [rendimiento, setRendimiento] = useState<number | null>(1);
   const [recetaExiste, setRecetaExiste] = useState(false);
   const [cargandoReceta, setCargandoReceta] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -48,10 +49,12 @@ export function RecetasPage() {
     try {
       const receta = await obtenerReceta(id);
       setFilas(receta.items.map((item) => ({ key: crypto.randomUUID(), insumoId: item.insumoId, cantidad: item.cantidad })));
+      setRendimiento(receta.rendimiento);
       setRecetaExiste(true);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
         setFilas([]);
+        setRendimiento(1);
         setRecetaExiste(false);
       } else {
         message.error(mensajeDeError(err, 'No se pudo cargar la receta'));
@@ -68,6 +71,8 @@ export function RecetasPage() {
     [insumos],
   );
 
+  // Costo de insumos de la tanda completa, tal como está cargada la receta (no todavía el costo
+  // de una unidad vendible: para eso hay que dividirlo por el rendimiento).
   const costoTotal = useMemo(
     () =>
       filas.reduce((acc, fila) => {
@@ -78,16 +83,20 @@ export function RecetasPage() {
     [filas, costoUnitarioPorInsumo],
   );
 
+  const costoPorUnidad = rendimiento && rendimiento > 0 ? costoTotal / rendimiento : null;
+
   // Margen como markup sobre el costo (no como % del precio, que es lo que usa el reporte de
   // margen por producto) -- así puede superar el 100% sin problema: un producto que se vende
   // al triple de su costo tiene 200% de margen sobre costo, no "un margen imposible".
   const margenActual =
-    productoSeleccionado && costoTotal > 0
-      ? ((productoSeleccionado.precioVenta - costoTotal) / costoTotal) * 100
+    productoSeleccionado && costoPorUnidad !== null && costoPorUnidad > 0
+      ? ((productoSeleccionado.precioVenta - costoPorUnidad) / costoPorUnidad) * 100
       : null;
 
   const precioSugerido =
-    costoTotal > 0 && margenDeseado !== null ? costoTotal * (1 + margenDeseado / 100) : null;
+    costoPorUnidad !== null && costoPorUnidad > 0 && margenDeseado !== null
+      ? costoPorUnidad * (1 + margenDeseado / 100)
+      : null;
 
   async function handleAplicarPrecio() {
     if (!productoSeleccionado || precioSugerido === null) return;
@@ -147,13 +156,18 @@ export function RecetasPage() {
       return;
     }
 
+    if (!rendimiento || rendimiento <= 0) {
+      message.warning('El rendimiento tiene que ser mayor a 0');
+      return;
+    }
+
     setGuardando(true);
     try {
       const payload = items.map((f) => ({ insumoId: f.insumoId as number, cantidad: f.cantidad as number }));
       if (recetaExiste) {
-        await actualizarReceta(productoId, payload);
+        await actualizarReceta(productoId, rendimiento, payload);
       } else {
-        await crearReceta(productoId, payload);
+        await crearReceta(productoId, rendimiento, payload);
       }
       setRecetaExiste(true);
       message.success('Receta guardada');
@@ -180,7 +194,7 @@ export function RecetasPage() {
       ),
     },
     {
-      title: 'Cantidad por unidad de producto',
+      title: 'Cantidad (para toda la receta)',
       width: 260,
       render: (_, fila) => (
         <InputNumber
@@ -233,6 +247,21 @@ export function RecetasPage() {
                 </Typography.Text>
               )}
 
+              <Flex align="center" gap={8}>
+                <Typography.Text>
+                  Rendimiento — cuánto {productoSeleccionado?.seVendePorPeso ? '(en kg)' : '(en unidades)'} da esta
+                  receta tal como está cargada abajo:
+                </Typography.Text>
+                <InputNumber
+                  min={0.001}
+                  step={1}
+                  style={{ width: 120 }}
+                  value={rendimiento}
+                  onChange={(v) => setRendimiento(v)}
+                  addonAfter={productoSeleccionado?.seVendePorPeso ? 'kg' : 'un.'}
+                />
+              </Flex>
+
               <Table
                 columns={columnas}
                 dataSource={filas}
@@ -256,10 +285,15 @@ export function RecetasPage() {
 
                   <Flex justify="space-between" align="flex-start" wrap="wrap" gap={24}>
                     <div>
-                      <Typography.Text type="secondary">Costo de insumos por unidad de producto</Typography.Text>
+                      <Typography.Text type="secondary">Costo de insumos de toda la tanda</Typography.Text>
                       <Typography.Title level={4} style={{ margin: '4px 0 0' }}>
                         {formatoMoneda.format(costoTotal)}
                       </Typography.Title>
+                      <Typography.Text type="secondary">
+                        Costo por {productoSeleccionado?.seVendePorPeso ? 'kg' : 'unidad'} vendible:{' '}
+                        {costoPorUnidad !== null ? formatoMoneda.format(costoPorUnidad) : '—'}
+                      </Typography.Text>
+                      <br />
                       {productoSeleccionado && (
                         <Typography.Text type="secondary">
                           Precio de venta actual: {formatoMoneda.format(productoSeleccionado.precioVenta)}

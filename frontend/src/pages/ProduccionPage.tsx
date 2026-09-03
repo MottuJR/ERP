@@ -46,13 +46,16 @@ export function ProduccionPage() {
     }
   }
 
+  const productoSeleccionado = productos.find((p) => p.id === productoId);
+  const unidadProducto = productoSeleccionado?.seVendePorPeso ? 'kg' : 'unidades';
+
   async function handleConfirmar() {
     if (!productoId || !cantidad || cantidad <= 0) return;
 
     setConfirmando(true);
     try {
       const orden = await confirmarOrdenProduccion(productoId, cantidad);
-      message.success(`Orden #${orden.id} confirmada — se sumaron ${orden.cantidad} unidades de stock`);
+      message.success(`Orden #${orden.id} confirmada — se sumaron ${orden.cantidad} ${unidadProducto} de stock`);
       setCantidad(1);
     } catch (err) {
       message.error(mensajeDeError(err, 'No se pudo confirmar la orden de producción'));
@@ -63,7 +66,7 @@ export function ProduccionPage() {
 
   const columnas: ColumnsType<RecetaItem> = [
     { title: 'Insumo', dataIndex: 'insumoNombre' },
-    { title: 'Por unidad', dataIndex: 'cantidad', width: 120 },
+    { title: 'Por receta', dataIndex: 'cantidad', width: 120 },
     {
       title: `Total a consumir (x${cantidad || 0})`,
       width: 200,
@@ -90,10 +93,20 @@ export function ProduccionPage() {
 
           {receta && !cargandoReceta && (
             <>
+              <Typography.Text type="secondary">
+                Esta receta, hecha una vez tal como está cargada, rinde {receta.rendimiento} {unidadProducto} de{' '}
+                {productoSeleccionado?.nombre}.
+              </Typography.Text>
+
               <Space align="center">
-                <Typography.Text>Cantidad a producir:</Typography.Text>
+                <Typography.Text>¿Cuántas veces vas a hacer la receta?</Typography.Text>
                 <InputNumber min={0.001} step={1} value={cantidad} onChange={(v) => setCantidad(v)} />
               </Space>
+
+              <Typography.Text type="secondary">
+                Esto suma al stock: {((cantidad ?? 0) * receta.rendimiento).toFixed(3)} {unidadProducto} de{' '}
+                {productoSeleccionado?.nombre}
+              </Typography.Text>
 
               <Typography.Text type="secondary">Esto es lo que se va a descontar de insumos:</Typography.Text>
               <Table columns={columnas} dataSource={receta.items} rowKey="insumoId" pagination={false} />

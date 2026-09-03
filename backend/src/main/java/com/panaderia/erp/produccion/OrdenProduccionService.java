@@ -45,9 +45,11 @@ public class OrdenProduccionService {
     }
 
     /**
-     * Confirma la orden: descuenta de una vez cada insumo de la receta (cantidad de la receta × cantidad
-     * a producir) y suma el stock del producto terminado. Todo en una transacción: si falta stock de
-     * cualquier insumo, no se descuenta ni se suma nada.
+     * Confirma la orden: descuenta de una vez cada insumo de la receta (cantidad de la receta × cuántas
+     * tandas se hacen) y suma al stock lo que esa cantidad de tandas realmente rinde (tandas × rendimiento
+     * de la receta — no son lo mismo si 1 "tanda" de masa no da 1 unidad de producto terminado, por
+     * ejemplo 1 kg de masa de medialunas que rinde 40 unidades). Todo en una transacción: si falta stock
+     * de cualquier insumo, no se descuenta ni se suma nada.
      */
     @Transactional
     public OrdenProduccionResponse confirmar(CrearOrdenProduccionRequest request, String emailUsuario) {
@@ -64,15 +66,17 @@ public class OrdenProduccionService {
         Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario autenticado no encontrado"));
 
+        BigDecimal cantidadProducida = request.cantidad().multiply(receta.getRendimiento());
+
         OrdenProduccion orden = ordenProduccionRepository.save(
-                new OrdenProduccion(producto.getId(), request.cantidad(), usuario.getId()));
+                new OrdenProduccion(producto.getId(), cantidadProducida, usuario.getId()));
 
         for (RecetaItem item : receta.getItems()) {
             BigDecimal cantidadNecesaria = item.getCantidad().multiply(request.cantidad());
             inventarioService.registrarSalidaInsumoPorProduccion(item.getInsumoId(), cantidadNecesaria, orden.getId());
         }
 
-        inventarioService.registrarEntradaProductoPorProduccion(producto.getId(), request.cantidad(), orden.getId());
+        inventarioService.registrarEntradaProductoPorProduccion(producto.getId(), cantidadProducida, orden.getId());
 
         return aResponse(orden, producto.getNombre());
     }

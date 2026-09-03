@@ -102,7 +102,10 @@ public class ReportesService {
     private MargenProductoResponse calcularMargen(Producto producto) {
         return recetaService.buscarPorProducto(producto.getId())
                 .map((Receta receta) -> {
-                    BigDecimal costoInsumos = recetaService.costoInsumos(receta);
+                    // costoInsumos es el costo de la tanda completa: hay que llevarlo a costo por
+                    // unidad de producto dividiendo por cuánto rinde esa tanda.
+                    BigDecimal costoInsumos = recetaService.costoInsumos(receta)
+                            .divide(receta.getRendimiento(), 4, RoundingMode.HALF_UP);
                     BigDecimal margen = producto.getPrecioVenta().subtract(costoInsumos);
                     BigDecimal margenPorcentual = producto.getPrecioVenta().compareTo(BigDecimal.ZERO) == 0
                             ? BigDecimal.ZERO

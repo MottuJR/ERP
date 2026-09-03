@@ -77,7 +77,7 @@ class OrdenProduccionServiceTest {
     @Test
     void confirmarDescuentaCadaInsumoDeLaRecetaMultiplicadoPorLaCantidadYSumaElStockDelProducto() {
         Producto pan = productoElaborado(1L, "Pan francés");
-        Receta receta = new Receta(pan.getId());
+        Receta receta = new Receta(pan.getId(), BigDecimal.ONE);
         receta.agregarItem(10L, new BigDecimal("0.500")); // 0.5 kg de harina por unidad de pan
         receta.agregarItem(20L, new BigDecimal("0.010")); // 0.01 kg de sal por unidad de pan
 
@@ -98,6 +98,30 @@ class OrdenProduccionServiceTest {
         // 20 unidades producidas * 0.01 kg de sal = 0.2 kg
         verify(inventarioService).registrarSalidaInsumoPorProduccion(20L, new BigDecimal("0.200"), 100L);
         verify(inventarioService).registrarEntradaProductoPorProduccion(1L, new BigDecimal("20"), 100L);
+    }
+
+    @Test
+    void siLaRecetaRindeMasDeUnaUnidadElStockSumaCantidadPorRendimientoPeroElInsumoSeDescuentaPorTanda() {
+        // Receta de medialunas: 1 "tanda" (1 kg de masa) rinde 40 unidades.
+        Producto medialunas = productoElaborado(1L, "Medialunas");
+        Receta receta = new Receta(medialunas.getId(), new BigDecimal("40"));
+        receta.agregarItem(10L, new BigDecimal("0.600")); // 0.6 kg de harina por tanda
+
+        when(productoService.obtenerPorId(1L)).thenReturn(medialunas);
+        when(recetaRepository.findByProductoId(1L)).thenReturn(Optional.of(receta));
+        stubUsuarioEncargado();
+        stubGuardarOrdenConId(100L);
+
+        // Hace 2 tandas.
+        CrearOrdenProduccionRequest request = new CrearOrdenProduccionRequest(1L, new BigDecimal("2"));
+
+        OrdenProduccionResponse response = ordenProduccionService.confirmar(request, EMAIL_ENCARGADO);
+
+        // 2 tandas * 40 unidades de rendimiento = 80 unidades sumadas al stock.
+        assertThat(response.cantidad()).isEqualByComparingTo("80");
+        verify(inventarioService).registrarEntradaProductoPorProduccion(1L, new BigDecimal("80"), 100L);
+        // El insumo se descuenta por tanda, no por unidad de producto: 2 tandas * 0.6 kg = 1.2 kg.
+        verify(inventarioService).registrarSalidaInsumoPorProduccion(10L, new BigDecimal("1.200"), 100L);
     }
 
     @Test
@@ -131,7 +155,7 @@ class OrdenProduccionServiceTest {
     @Test
     void siFaltaStockDeUnInsumoLaOrdenPropagaLaExcepcionYNoQuedaConfirmada() {
         Producto pan = productoElaborado(1L, "Pan francés");
-        Receta receta = new Receta(pan.getId());
+        Receta receta = new Receta(pan.getId(), BigDecimal.ONE);
         receta.agregarItem(10L, new BigDecimal("0.500"));
 
         when(productoService.obtenerPorId(1L)).thenReturn(pan);

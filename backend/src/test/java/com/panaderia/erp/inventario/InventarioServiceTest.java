@@ -80,7 +80,7 @@ class InventarioServiceTest {
         inventarioService.registrarMovimientoManual(request, EMAIL);
 
         assertThat(harina.getStockActual()).isEqualByComparingTo("15.000");
-        verify(auditoriaService).registrar(eq(EMAIL), eq("INSUMO"), eq(1L), eq(AccionAuditoria.AJUSTE_STOCK), any());
+        verify(auditoriaService).registrar(eq(EMAIL), eq("Insumo"), eq(1L), eq(AccionAuditoria.AJUSTE_STOCK), any());
     }
 
     @Test
@@ -93,7 +93,7 @@ class InventarioServiceTest {
         inventarioService.registrarMovimientoManual(request, EMAIL);
 
         verify(productoService).ajustarStockActual(2L, new BigDecimal("-3.000"));
-        verify(auditoriaService).registrar(eq(EMAIL), eq("PRODUCTO"), eq(2L), eq(AccionAuditoria.AJUSTE_STOCK), any());
+        verify(auditoriaService).registrar(eq(EMAIL), eq("Producto"), eq(2L), eq(AccionAuditoria.AJUSTE_STOCK), any());
     }
 
     @Test

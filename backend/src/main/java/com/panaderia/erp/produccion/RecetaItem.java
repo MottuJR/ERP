@@ -28,7 +28,8 @@ public class RecetaItem {
     private Long insumoId;
 
     /**
-     * Cantidad de este insumo que se consume por cada unidad de producto que arroja la receta.
+     * Cantidad de este insumo que lleva la tanda completa de la receta (no por unidad de
+     * producto) — ver {@link Receta#getRendimiento()} para cuánto arroja esa tanda.
      */
     @Column(nullable = false, precision = 12, scale = 3)
     private BigDecimal cantidad;
