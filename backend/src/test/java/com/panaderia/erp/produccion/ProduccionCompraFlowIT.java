@@ -113,6 +113,33 @@ class ProduccionCompraFlowIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void obtenerRecetaYaCargadaNoRompePorLazyLoadingDeSusItems() throws Exception {
+        // Bug real: el GET arma la respuesta fuera de una transacción (spring.jpa.open-in-view=
+        // false), así que si el repositorio no trae los items con JOIN FETCH, acceder a
+        // receta.getItems() tira LazyInitializationException — que Spring termina devolviendo
+        // como un 401 engañoso en vez de un 500, haciendo que el frontend deslogue al usuario.
+        JsonNode receta = obtener("/api/produccion/recetas/" + productoPanId);
+
+        assertThat(receta.get("items")).hasSize(1);
+        assertThat(receta.get("items").get(0).get("insumoNombre").asText()).isEqualTo("Harina");
+    }
+
+    @Test
+    void margenPorProductoNoRompePorLazyLoadingDeLaReceta() throws Exception {
+        JsonNode margenes = obtener("/api/reportes/margen-productos");
+
+        JsonNode margenDelPan = null;
+        for (JsonNode margen : margenes) {
+            if (margen.get("productoId").asLong() == productoPanId) {
+                margenDelPan = margen;
+            }
+        }
+
+        assertThat(margenDelPan).isNotNull();
+        assertThat(margenDelPan.get("costoInsumos").decimalValue()).isEqualByComparingTo("50.00");
+    }
+
+    @Test
     void confirmarCompraSumaStockDeInsumoYActualizaElCostoUnitario() throws Exception {
         Long proveedorId = crear("/api/proveedores", """
                 { "nombre": "Molino SA" }
