@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import {
   Alert,
   Button,
@@ -9,13 +9,12 @@ import {
   InputNumber,
   Modal,
   Row,
-  Segmented,
   Select,
   Table,
   Typography,
   message,
 } from 'antd';
-import type { InputRef } from 'antd';
+import type { InputRef, RefSelectProps } from 'antd';
 import { DeleteOutlined, PlusOutlined, ScanOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { Link } from 'react-router-dom';
@@ -50,8 +49,13 @@ export function PosPage() {
 
   const [productoManualId, setProductoManualId] = useState<number | undefined>();
   const [cantidadManual, setCantidadManual] = useState<number | null>(1);
-  const [modoCargaManual, setModoCargaManual] = useState<'peso' | 'monto'>('peso');
   const [montoManual, setMontoManual] = useState<number | null>(null);
+
+  // Para que Enter vaya saltando de campo en campo: producto -> cantidad -> (monto, si es por
+  // peso) -> agregar -> vuelve a producto, sin que el cajero tenga que tocar el mouse.
+  const productoManualRef = useRef<RefSelectProps>(null);
+  const cantidadManualRef = useRef<ComponentRef<typeof InputNumber>>(null);
+  const montoManualRef = useRef<ComponentRef<typeof InputNumber>>(null);
 
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [medioPago, setMedioPago] = useState<MedioPago>('EFECTIVO');
@@ -169,19 +173,36 @@ export function PosPage() {
 
   const productoManualSeleccionado = productos.find((p) => p.id === productoManualId);
 
-  // Cuando se carga por monto, la cantidad equivalente en kg se redondea a 3 decimales —
-  // misma precisión que usa el resto de la app para pesos (balanza, recetas, etc).
-  const cantidadPorMonto =
-    productoManualSeleccionado && montoManual
-      ? Math.round((montoManual / productoManualSeleccionado.precioVenta) * 1000) / 1000
-      : null;
+  function handleSeleccionarProductoManual(id: number) {
+    const producto = productos.find((p) => p.id === id);
+    setProductoManualId(id);
+    setCantidadManual(1);
+    setMontoManual(producto?.seVendePorPeso ? Math.round(producto.precioVenta * 100) / 100 : null);
+    setTimeout(() => cantidadManualRef.current?.focus(), 0);
+  }
+
+  // Los campos de cantidad y monto se mantienen sincronizados en los dos sentidos: cambiar uno
+  // recalcula el otro contra el precio por kg, así el cajero puede usar el que le resulte más
+  // cómodo según lo que le pida el cliente ("medio kilo" o "$3000 de queso").
+  function handleCambiarCantidadManual(v: number | null) {
+    setCantidadManual(v);
+    if (productoManualSeleccionado?.seVendePorPeso) {
+      setMontoManual(v !== null ? Math.round(v * productoManualSeleccionado.precioVenta * 100) / 100 : null);
+    }
+  }
+
+  function handleCambiarMontoManual(v: number | null) {
+    setMontoManual(v);
+    if (productoManualSeleccionado?.seVendePorPeso) {
+      setCantidadManual(
+        v !== null ? Math.round((v / productoManualSeleccionado.precioVenta) * 1000) / 1000 : null,
+      );
+    }
+  }
 
   function handleAgregarManual() {
     const producto = productos.find((p) => p.id === productoManualId);
-    if (!producto) return;
-
-    const cantidad = producto.seVendePorPeso && modoCargaManual === 'monto' ? cantidadPorMonto : cantidadManual;
-    if (!cantidad || cantidad <= 0) return;
+    if (!producto || !cantidadManual || cantidadManual <= 0) return;
 
     setCarrito((prev) => [
       ...prev,
@@ -191,14 +212,14 @@ export function PosPage() {
         productoNombre: producto.nombre,
         seVendePorPeso: producto.seVendePorPeso,
         unidadMedida: producto.seVendePorPeso ? 'kg' : 'un.',
-        cantidad,
+        cantidad: cantidadManual,
         precioUnitario: producto.precioVenta,
       },
     ]);
     setProductoManualId(undefined);
     setCantidadManual(1);
-    setModoCargaManual('peso');
     setMontoManual(null);
+    productoManualRef.current?.focus();
   }
 
   function handleQuitar(key: string) {
@@ -345,16 +366,12 @@ export function PosPage() {
             <Typography.Text type="secondary">Buscar producto manualmente</Typography.Text>
             <Flex vertical gap={8} style={{ marginTop: 8 }}>
               <Select
+                ref={productoManualRef}
                 showSearch
                 placeholder="Producto"
                 loading={cargandoProductos}
                 value={productoManualId}
-                onChange={(v) => {
-                  setProductoManualId(v);
-                  setCantidadManual(1);
-                  setModoCargaManual('peso');
-                  setMontoManual(null);
-                }}
+                onChange={handleSeleccionarProductoManual}
                 optionFilterProp="label"
                 options={productos.map((p) => ({
                   value: p.id,
@@ -362,36 +379,31 @@ export function PosPage() {
                 }))}
               />
 
-              {productoManualSeleccionado?.seVendePorPeso && (
-                <Segmented
-                  value={modoCargaManual}
-                  onChange={(v) => setModoCargaManual(v as 'peso' | 'monto')}
-                  options={[
-                    { label: 'Por peso (kg)', value: 'peso' },
-                    { label: 'Por monto ($)', value: 'monto' },
-                  ]}
-                />
-              )}
-
               <Flex gap={8}>
-                {productoManualSeleccionado?.seVendePorPeso && modoCargaManual === 'monto' ? (
+                <InputNumber
+                  ref={cantidadManualRef}
+                  min={productoManualSeleccionado?.seVendePorPeso ? 0.001 : 1}
+                  step={productoManualSeleccionado?.seVendePorPeso ? 0.1 : 1}
+                  style={{ flex: 1 }}
+                  placeholder={productoManualSeleccionado?.seVendePorPeso ? 'Peso en kg' : 'Cantidad'}
+                  value={cantidadManual}
+                  onChange={handleCambiarCantidadManual}
+                  onPressEnter={() =>
+                    productoManualSeleccionado?.seVendePorPeso
+                      ? montoManualRef.current?.focus()
+                      : handleAgregarManual()
+                  }
+                />
+                {productoManualSeleccionado?.seVendePorPeso && (
                   <InputNumber
+                    ref={montoManualRef}
                     min={0.01}
                     step={100}
                     style={{ flex: 1 }}
                     placeholder="Monto en $"
                     prefix="$"
                     value={montoManual}
-                    onChange={(v) => setMontoManual(v)}
-                    onPressEnter={handleAgregarManual}
-                  />
-                ) : (
-                  <InputNumber
-                    min={productoManualSeleccionado?.seVendePorPeso ? 0.001 : 1}
-                    step={productoManualSeleccionado?.seVendePorPeso ? 0.1 : 1}
-                    style={{ flex: 1 }}
-                    value={cantidadManual}
-                    onChange={(v) => setCantidadManual(v)}
+                    onChange={handleCambiarMontoManual}
                     onPressEnter={handleAgregarManual}
                   />
                 )}
@@ -399,14 +411,6 @@ export function PosPage() {
                   Agregar
                 </Button>
               </Flex>
-
-              {productoManualSeleccionado?.seVendePorPeso && modoCargaManual === 'monto' && (
-                <Typography.Text type="secondary">
-                  {cantidadPorMonto !== null
-                    ? `Equivale a ${cantidadPorMonto.toFixed(3)} kg`
-                    : 'Ingresá un monto para ver a cuántos kg equivale'}
-                </Typography.Text>
-              )}
             </Flex>
           </Card>
         </Col>
