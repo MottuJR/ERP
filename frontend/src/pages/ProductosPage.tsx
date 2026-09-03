@@ -24,6 +24,7 @@ import {
   listarProductos,
   type ProductoPayload,
 } from '../api/productos';
+import { registrarMovimientoStock } from '../api/inventario';
 import { mensajeDeError } from '../api/client';
 import type { Producto } from '../types';
 
@@ -45,6 +46,8 @@ export function ProductosPage() {
   const [nombreNuevaCategoria, setNombreNuevaCategoria] = useState('');
   const [creandoCategoria, setCreandoCategoria] = useState(false);
 
+  const [stockActualNuevo, setStockActualNuevo] = useState<number | null>(null);
+
   function cargarTodo() {
     setCargando(true);
     Promise.all([listarProductos(), listarCategorias()])
@@ -65,6 +68,7 @@ export function ProductosPage() {
 
   function abrirNuevo() {
     setProductoEditando(null);
+    setStockActualNuevo(null);
     form.resetFields();
     form.setFieldsValue({ seVendePorPeso: false, stockMinimo: 0, unidadMedida: 'UNIDAD', tipo: 'REVENTA' });
     setModalAbierto(true);
@@ -72,6 +76,7 @@ export function ProductosPage() {
 
   function abrirEdicion(producto: Producto) {
     setProductoEditando(producto);
+    setStockActualNuevo(producto.stockActual);
     form.setFieldsValue({
       nombre: producto.nombre,
       categoriaId: producto.categoriaId,
@@ -101,6 +106,17 @@ export function ProductosPage() {
     try {
       if (productoEditando) {
         await actualizarProducto(productoEditando.id, payload);
+        const delta =
+          stockActualNuevo !== null ? stockActualNuevo - productoEditando.stockActual : 0;
+        if (delta !== 0) {
+          await registrarMovimientoStock({
+            itemTipo: 'PRODUCTO',
+            itemId: productoEditando.id,
+            tipo: 'AJUSTE',
+            cantidad: delta,
+            motivo: 'Corrección manual de stock desde edición de producto',
+          });
+        }
         message.success('Producto actualizado');
       } else {
         await crearProducto(payload);
@@ -283,9 +299,21 @@ export function ProductosPage() {
           </Form.Item>
 
           {productoEditando && (
-            <Form.Item name="activo" label="Activo" valuePropName="checked">
-              <Switch />
-            </Form.Item>
+            <>
+              <Form.Item label="Stock actual (corregir manualmente si hubo un error de carga o venta)">
+                <InputNumber
+                  min={0}
+                  step={1}
+                  style={{ width: '100%' }}
+                  value={stockActualNuevo}
+                  onChange={(v) => setStockActualNuevo(v)}
+                />
+              </Form.Item>
+
+              <Form.Item name="activo" label="Activo" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+            </>
           )}
         </Form>
       </Modal>

@@ -3,7 +3,13 @@ import { Button, Card, Flex, Form, InputNumber, Input, Modal, Select, Table, mes
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
-import { actualizarInsumo, crearInsumo, listarInsumos, type InsumoPayload } from '../api/inventario';
+import {
+  actualizarInsumo,
+  crearInsumo,
+  listarInsumos,
+  registrarMovimientoStock,
+  type InsumoPayload,
+} from '../api/inventario';
 import { mensajeDeError } from '../api/client';
 import type { Insumo } from '../types';
 
@@ -18,6 +24,8 @@ export function InsumosPage() {
   const [insumoEditando, setInsumoEditando] = useState<Insumo | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [form] = Form.useForm<InsumoPayload>();
+
+  const [stockActualNuevo, setStockActualNuevo] = useState<number | null>(null);
 
   function cargarInsumos() {
     setCargando(true);
@@ -36,6 +44,7 @@ export function InsumosPage() {
 
   function abrirNuevo() {
     setInsumoEditando(null);
+    setStockActualNuevo(null);
     form.resetFields();
     form.setFieldsValue({ unidadMedida: 'KG', stockMinimo: 0, costoUnitario: 0 });
     setModalAbierto(true);
@@ -43,6 +52,7 @@ export function InsumosPage() {
 
   function abrirEdicion(insumo: Insumo) {
     setInsumoEditando(insumo);
+    setStockActualNuevo(insumo.stockActual);
     form.setFieldsValue({
       nombre: insumo.nombre,
       unidadMedida: insumo.unidadMedida,
@@ -58,6 +68,16 @@ export function InsumosPage() {
     try {
       if (insumoEditando) {
         await actualizarInsumo(insumoEditando.id, values);
+        const delta = stockActualNuevo !== null ? stockActualNuevo - insumoEditando.stockActual : 0;
+        if (delta !== 0) {
+          await registrarMovimientoStock({
+            itemTipo: 'INSUMO',
+            itemId: insumoEditando.id,
+            tipo: 'AJUSTE',
+            cantidad: delta,
+            motivo: 'Corrección manual de stock desde edición de insumo',
+          });
+        }
         message.success('Insumo actualizado');
       } else {
         await crearInsumo(values);
@@ -145,6 +165,18 @@ export function InsumosPage() {
           <Form.Item name="costoUnitario" label="Costo unitario" rules={[{ required: true }]}>
             <InputNumber min={0} step={10} style={{ width: '100%' }} />
           </Form.Item>
+
+          {insumoEditando && (
+            <Form.Item label="Stock actual (corregir manualmente si hubo un error de carga o venta)">
+              <InputNumber
+                min={0}
+                step={1}
+                style={{ width: '100%' }}
+                value={stockActualNuevo}
+                onChange={(v) => setStockActualNuevo(v)}
+              />
+            </Form.Item>
+          )}
         </Form>
       </Modal>
     </AppLayout>
