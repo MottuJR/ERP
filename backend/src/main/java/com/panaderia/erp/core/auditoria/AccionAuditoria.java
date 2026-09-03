@@ -6,5 +6,6 @@ public enum AccionAuditoria {
     DESACTIVAR,
     AJUSTE_STOCK,
     ABRIR_CAJA,
-    CERRAR_CAJA
+    CERRAR_CAJA,
+    REGISTRAR_PAGO
 }

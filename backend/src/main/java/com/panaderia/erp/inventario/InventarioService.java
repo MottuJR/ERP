@@ -94,7 +94,11 @@ public class InventarioService {
                     request.tipo(), ItemTipo.INSUMO, request.itemId(), request.cantidad(), request.motivo(), null);
         };
 
-        auditoriaService.registrar(emailUsuario, request.itemTipo().name(), request.itemId(),
+        // "Producto"/"Insumo" en vez de request.itemTipo().name() (que daría "PRODUCTO"/"INSUMO"):
+        // el resto de las auditorías usa ese casing y el filtro por entidad del frontend no
+        // debe mostrar la misma entidad duplicada con dos capitalizaciones distintas.
+        String entidad = request.itemTipo() == ItemTipo.PRODUCTO ? "Producto" : "Insumo";
+        auditoriaService.registrar(emailUsuario, entidad, request.itemId(),
                 AccionAuditoria.AJUSTE_STOCK,
                 "%s manual de %s: motivo \"%s\"".formatted(request.tipo(), request.cantidad(), request.motivo()));
 

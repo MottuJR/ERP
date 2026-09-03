@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,10 +45,14 @@ public class ClienteController {
         return ClienteResponse.from(clienteService.obtenerPorId(id));
     }
 
+    // También lo puede hacer VENDEDOR: si un cliente quiere pagar con cuenta corriente en el
+    // momento de la venta y todavía no existe en el sistema, tiene que poder darlo de alta ahí
+    // mismo sin depender de un DUENO/ENCARGADO. Queda igual auditado (ver ClienteService.crear).
     @PostMapping
-    @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
-    public ResponseEntity<ClienteResponse> crear(@Valid @RequestBody ClienteRequest request) {
-        Cliente cliente = clienteService.crear(request);
+    @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO', 'VENDEDOR')")
+    public ResponseEntity<ClienteResponse> crear(@Valid @RequestBody ClienteRequest request,
+                                                  Authentication authentication) {
+        Cliente cliente = clienteService.crear(request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(ClienteResponse.from(cliente));
     }
 
@@ -76,11 +81,15 @@ public class ClienteController {
                 .toList();
     }
 
+    // También lo puede hacer VENDEDOR: si un cliente quiere saldar su cuenta corriente en el
+    // momento, no debería depender de un DUENO/ENCARGADO. Queda auditado con REGISTRAR_PAGO para
+    // poder controlar que lo cobrado se haya asentado.
     @PostMapping("/{id}/pagos")
-    @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
+    @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO', 'VENDEDOR')")
     public ResponseEntity<PagoClienteResponse> registrarPago(@PathVariable Long id,
-                                                              @Valid @RequestBody PagoClienteRequest request) {
-        PagoCliente pago = cuentaCorrienteService.registrarPago(id, request);
+                                                              @Valid @RequestBody PagoClienteRequest request,
+                                                              Authentication authentication) {
+        PagoCliente pago = cuentaCorrienteService.registrarPago(id, request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(PagoClienteResponse.from(pago));
     }
 }

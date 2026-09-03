@@ -1,6 +1,8 @@
 package com.panaderia.erp.clientes;
 
 import com.panaderia.erp.clientes.dto.ClienteRequest;
+import com.panaderia.erp.core.auditoria.AccionAuditoria;
+import com.panaderia.erp.core.auditoria.AuditoriaService;
 import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
 import com.panaderia.erp.core.exception.ValidacionNegocioException;
 import org.springframework.stereotype.Service;
@@ -11,10 +13,14 @@ import java.util.List;
 @Service
 public class ClienteService {
 
-    private final ClienteRepository clienteRepository;
+    private static final String ENTIDAD = "Cliente";
 
-    public ClienteService(ClienteRepository clienteRepository) {
+    private final ClienteRepository clienteRepository;
+    private final AuditoriaService auditoriaService;
+
+    public ClienteService(ClienteRepository clienteRepository, AuditoriaService auditoriaService) {
         this.clienteRepository = clienteRepository;
+        this.auditoriaService = auditoriaService;
     }
 
     public List<Cliente> listarActivos() {
@@ -42,9 +48,15 @@ public class ClienteService {
     }
 
     @Transactional
-    public Cliente crear(ClienteRequest request) {
-        return clienteRepository.save(
+    public Cliente crear(ClienteRequest request, String emailUsuario) {
+        Cliente cliente = clienteRepository.save(
                 new Cliente(request.nombre(), request.telefono(), request.tieneCuentaCorriente()));
+
+        auditoriaService.registrar(emailUsuario, ENTIDAD, cliente.getId(), AccionAuditoria.CREAR,
+                "Alta de \"%s\"%s".formatted(
+                        cliente.getNombre(), request.tieneCuentaCorriente() ? " con cuenta corriente habilitada" : ""));
+
+        return cliente;
     }
 
     @Transactional

@@ -5,7 +5,10 @@ import { AppLayout } from '../layout/AppLayout';
 import { listarAuditoria, type RegistroAuditoria } from '../api/auditoria';
 import { mensajeDeError } from '../api/client';
 
-const ENTIDADES = ['Producto', 'Caja', 'PRODUCTO', 'INSUMO'];
+// Backend normalizado para usar un único casing por entidad (antes "Producto" y "PRODUCTO"
+// convivían por venir de dos lugares distintos — altas/bajas vs. ajustes de stock — y el filtro
+// mostraba la misma entidad duplicada).
+const ENTIDADES = ['Producto', 'Insumo', 'Caja', 'Cliente'];
 
 export function AuditoriaPage() {
   const [registros, setRegistros] = useState<RegistroAuditoria[]>([]);

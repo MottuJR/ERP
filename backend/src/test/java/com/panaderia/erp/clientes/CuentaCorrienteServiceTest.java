@@ -2,6 +2,7 @@ package com.panaderia.erp.clientes;
 
 import com.panaderia.erp.clientes.dto.PagoClienteRequest;
 import com.panaderia.erp.clientes.dto.SaldoClienteResponse;
+import com.panaderia.erp.core.auditoria.AuditoriaService;
 import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
 import com.panaderia.erp.ventas.MedioPago;
 import com.panaderia.erp.ventas.VentaService;
@@ -32,6 +33,9 @@ class CuentaCorrienteServiceTest {
 
     @Mock
     private VentaService ventaService;
+
+    @Mock
+    private AuditoriaService auditoriaService;
 
     @InjectMocks
     private CuentaCorrienteService cuentaCorrienteService;
@@ -88,7 +92,7 @@ class CuentaCorrienteServiceTest {
         when(pagoClienteRepository.save(any(PagoCliente.class))).thenAnswer(inv -> inv.getArgument(0));
 
         PagoClienteRequest request = new PagoClienteRequest(new BigDecimal("1500.00"), MedioPago.EFECTIVO);
-        PagoCliente pago = cuentaCorrienteService.registrarPago(1L, request);
+        PagoCliente pago = cuentaCorrienteService.registrarPago(1L, request, "vendedor@panaderia.local");
 
         assertThat(pago.getClienteId()).isEqualTo(1L);
         assertThat(pago.getMonto()).isEqualByComparingTo("1500.00");

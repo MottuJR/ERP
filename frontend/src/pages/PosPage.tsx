@@ -7,6 +7,7 @@ import {
   Flex,
   Input,
   InputNumber,
+  Modal,
   Row,
   Select,
   Table,
@@ -14,12 +15,12 @@ import {
   message,
 } from 'antd';
 import type { InputRef } from 'antd';
-import { DeleteOutlined, ScanOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PlusOutlined, ScanOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '../layout/AppLayout';
 import { listarProductos } from '../api/productos';
-import { listarClientes } from '../api/clientes';
+import { crearCliente, listarClientes } from '../api/clientes';
 import { obtenerCajaActual } from '../api/caja';
 import { confirmarVenta, escanear, type ItemVentaPayload } from '../api/ventas';
 import { mensajeDeError } from '../api/client';
@@ -56,6 +57,11 @@ export function PosPage() {
   const [clientesConCuenta, setClientesConCuenta] = useState<Cliente[]>([]);
   const [clienteId, setClienteId] = useState<number | undefined>();
 
+  const [nuevoClienteAbierto, setNuevoClienteAbierto] = useState(false);
+  const [nombreNuevoCliente, setNombreNuevoCliente] = useState('');
+  const [telefonoNuevoCliente, setTelefonoNuevoCliente] = useState('');
+  const [creandoCliente, setCreandoCliente] = useState(false);
+
   const [cajaActual, setCajaActual] = useState<Caja | null>(null);
   const [cargandoCaja, setCargandoCaja] = useState(true);
 
@@ -68,24 +74,58 @@ export function PosPage() {
     setTimeout(() => inputCodigoRef.current?.focus(), 0);
   }
 
+  function cargarClientesConCuenta() {
+    return listarClientes()
+      .then((clientes) => setClientesConCuenta(clientes.filter((c) => c.tieneCuentaCorriente)))
+      .catch(() => {
+        // La cuenta corriente es opcional en el flujo de venta: si no se pueden cargar los
+        // clientes, simplemente no se ofrece esa opción, no hace falta romper la pantalla.
+      });
+  }
+
   useEffect(() => {
     listarProductos()
       .then(setProductos)
       .catch((err) => setErrorProductos(mensajeDeError(err, 'No se pudieron cargar los productos')))
       .finally(() => setCargandoProductos(false));
 
-    listarClientes()
-      .then((clientes) => setClientesConCuenta(clientes.filter((c) => c.tieneCuentaCorriente)))
-      .catch(() => {
-        // La cuenta corriente es opcional en el flujo de venta: si no se pueden cargar los
-        // clientes, simplemente no se ofrece esa opción, no hace falta romper la pantalla.
-      });
+    cargarClientesConCuenta();
 
     obtenerCajaActual()
       .then(setCajaActual)
       .catch((err) => message.error(mensajeDeError(err, 'No se pudo consultar la caja actual')))
       .finally(() => setCargandoCaja(false));
   }, []);
+
+  function abrirNuevoCliente() {
+    setNombreNuevoCliente('');
+    setTelefonoNuevoCliente('');
+    setNuevoClienteAbierto(true);
+  }
+
+  async function handleCrearCliente() {
+    if (!nombreNuevoCliente.trim()) {
+      message.warning('Ingresá el nombre del cliente');
+      return;
+    }
+
+    setCreandoCliente(true);
+    try {
+      const cliente = await crearCliente({
+        nombre: nombreNuevoCliente.trim(),
+        telefono: telefonoNuevoCliente.trim() || null,
+        tieneCuentaCorriente: true,
+      });
+      await cargarClientesConCuenta();
+      setClienteId(cliente.id);
+      setNuevoClienteAbierto(false);
+      message.success(`Cliente "${cliente.nombre}" creado`);
+    } catch (err) {
+      message.error(mensajeDeError(err, 'No se pudo crear el cliente'));
+    } finally {
+      setCreandoCliente(false);
+    }
+  }
 
   const total = useMemo(
     () => carrito.reduce((acc, item) => acc + (item.cantidad ?? 0) * item.precioUnitario, 0),
@@ -341,16 +381,21 @@ export function PosPage() {
                   style={{ width: 220 }}
                 />
                 {medioPago === 'CUENTA_CORRIENTE' && (
-                  <Select
-                    showSearch
-                    placeholder="Cliente"
-                    style={{ width: 220 }}
-                    value={clienteId}
-                    onChange={setClienteId}
-                    optionFilterProp="label"
-                    options={clientesConCuenta.map((c) => ({ value: c.id, label: c.nombre }))}
-                    notFoundContent="Ningún cliente tiene cuenta corriente habilitada"
-                  />
+                  <>
+                    <Select
+                      showSearch
+                      placeholder="Cliente"
+                      style={{ width: 220 }}
+                      value={clienteId}
+                      onChange={setClienteId}
+                      optionFilterProp="label"
+                      options={clientesConCuenta.map((c) => ({ value: c.id, label: c.nombre }))}
+                      notFoundContent="Ningún cliente tiene cuenta corriente habilitada"
+                    />
+                    <Button icon={<PlusOutlined />} onClick={abrirNuevoCliente}>
+                      Nuevo cliente
+                    </Button>
+                  </>
                 )}
               </Flex>
               <Typography.Title level={3} style={{ margin: 0 }}>
@@ -377,6 +422,32 @@ export function PosPage() {
           </Card>
         </Col>
       </Row>
+
+      <Modal
+        title="Nuevo cliente"
+        open={nuevoClienteAbierto}
+        onCancel={() => setNuevoClienteAbierto(false)}
+        onOk={handleCrearCliente}
+        confirmLoading={creandoCliente}
+      >
+        <Typography.Text>Nombre</Typography.Text>
+        <Input
+          value={nombreNuevoCliente}
+          onChange={(e) => setNombreNuevoCliente(e.target.value)}
+          style={{ marginTop: 8, marginBottom: 16 }}
+          autoFocus
+        />
+        <Typography.Text>Teléfono (opcional)</Typography.Text>
+        <Input
+          value={telefonoNuevoCliente}
+          onChange={(e) => setTelefonoNuevoCliente(e.target.value)}
+          onPressEnter={handleCrearCliente}
+          style={{ marginTop: 8 }}
+        />
+        <Typography.Paragraph type="secondary" style={{ marginTop: 16, marginBottom: 0 }}>
+          Se crea con la cuenta corriente ya habilitada, para poder cargarle esta venta.
+        </Typography.Paragraph>
+      </Modal>
     </AppLayout>
   );
 }
