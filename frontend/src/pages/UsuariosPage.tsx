@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Button, Card, Form, Input, InputNumber, Modal, Select, Switch, Table, Tag, message } from 'antd';
-import { EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, Flex, Form, Input, InputNumber, Modal, Select, Switch, Table, Tag, message } from 'antd';
+import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
 import {
@@ -31,6 +31,7 @@ interface FormValues {
 export function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [usuarioEditando, setUsuarioEditando] = useState<Usuario | null>(null);
@@ -46,6 +47,11 @@ export function UsuariosPage() {
   }
 
   useEffect(cargarUsuarios, []);
+
+  const usuariosFiltrados = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    return texto ? usuarios.filter((u) => u.nombre.toLowerCase().includes(texto)) : usuarios;
+  }, [usuarios, busqueda]);
 
   function abrirNuevo() {
     setUsuarioEditando(null);
@@ -133,12 +139,28 @@ export function UsuariosPage() {
       <Card
         title="Usuarios"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
-            Nuevo usuario
-          </Button>
+          <Flex gap={8}>
+            <Input
+              placeholder="Buscar por nombre"
+              prefix={<SearchOutlined />}
+              allowClear
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              style={{ width: 240 }}
+            />
+            <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
+              Nuevo usuario
+            </Button>
+          </Flex>
         }
       >
-        <Table columns={columnas} dataSource={usuarios} rowKey="id" loading={cargando} />
+        <Table
+          columns={columnas}
+          dataSource={usuariosFiltrados}
+          rowKey="id"
+          loading={cargando}
+          locale={{ emptyText: busqueda ? 'Ningún usuario coincide con la búsqueda' : 'Sin usuarios' }}
+        />
       </Card>
 
       <Modal

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Button, Card, Form, Input, Modal, Switch, Table, Tag, message } from 'antd';
-import { EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, Flex, Form, Input, Modal, Switch, Table, Tag, message } from 'antd';
+import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
 import { actualizarCliente, crearCliente, listarClientes, type ClientePayload } from '../api/clientes';
@@ -10,6 +10,7 @@ import type { Cliente } from '../types';
 export function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
@@ -25,6 +26,11 @@ export function ClientesPage() {
   }
 
   useEffect(cargarClientes, []);
+
+  const clientesFiltrados = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    return texto ? clientes.filter((c) => c.nombre.toLowerCase().includes(texto)) : clientes;
+  }, [clientes, busqueda]);
 
   function abrirNuevo() {
     setClienteEditando(null);
@@ -83,12 +89,28 @@ export function ClientesPage() {
       <Card
         title="Clientes"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
-            Nuevo cliente
-          </Button>
+          <Flex gap={8}>
+            <Input
+              placeholder="Buscar por nombre"
+              prefix={<SearchOutlined />}
+              allowClear
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              style={{ width: 240 }}
+            />
+            <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
+              Nuevo cliente
+            </Button>
+          </Flex>
         }
       >
-        <Table columns={columnas} dataSource={clientes} rowKey="id" loading={cargando} />
+        <Table
+          columns={columnas}
+          dataSource={clientesFiltrados}
+          rowKey="id"
+          loading={cargando}
+          locale={{ emptyText: busqueda ? 'Ningún cliente coincide con la búsqueda' : 'Sin clientes' }}
+        />
       </Card>
 
       <Modal

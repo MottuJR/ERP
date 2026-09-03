@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Card,
+  Flex,
   Form,
   Input,
   InputNumber,
@@ -12,7 +13,7 @@ import {
   Tag,
   message,
 } from 'antd';
-import { EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
 import { crearCategoria, listarCategorias, type Categoria } from '../api/categorias';
@@ -32,6 +33,7 @@ export function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [productoEditando, setProductoEditando] = useState<Producto | null>(null);
@@ -55,6 +57,11 @@ export function ProductosPage() {
   }
 
   useEffect(cargarTodo, []);
+
+  const productosFiltrados = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    return texto ? productos.filter((p) => p.nombre.toLowerCase().includes(texto)) : productos;
+  }, [productos, busqueda]);
 
   function abrirNuevo() {
     setProductoEditando(null);
@@ -174,12 +181,28 @@ export function ProductosPage() {
       <Card
         title="Productos"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
-            Nuevo producto
-          </Button>
+          <Flex gap={8}>
+            <Input
+              placeholder="Buscar por nombre"
+              prefix={<SearchOutlined />}
+              allowClear
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              style={{ width: 240 }}
+            />
+            <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
+              Nuevo producto
+            </Button>
+          </Flex>
         }
       >
-        <Table columns={columnas} dataSource={productos} rowKey="id" loading={cargando} />
+        <Table
+          columns={columnas}
+          dataSource={productosFiltrados}
+          rowKey="id"
+          loading={cargando}
+          locale={{ emptyText: busqueda ? 'Ningún producto coincide con la búsqueda' : 'Sin productos' }}
+        />
       </Card>
 
       <Modal

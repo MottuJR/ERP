@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Button, Card, Form, InputNumber, Input, Modal, Select, Table, message } from 'antd';
-import { EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, Flex, Form, InputNumber, Input, Modal, Select, Table, message } from 'antd';
+import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
 import { actualizarInsumo, crearInsumo, listarInsumos, type InsumoPayload } from '../api/inventario';
@@ -12,6 +12,7 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', curren
 export function InsumosPage() {
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [insumoEditando, setInsumoEditando] = useState<Insumo | null>(null);
@@ -27,6 +28,11 @@ export function InsumosPage() {
   }
 
   useEffect(cargarInsumos, []);
+
+  const insumosFiltrados = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    return texto ? insumos.filter((i) => i.nombre.toLowerCase().includes(texto)) : insumos;
+  }, [insumos, busqueda]);
 
   function abrirNuevo() {
     setInsumoEditando(null);
@@ -88,12 +94,28 @@ export function InsumosPage() {
       <Card
         title="Insumos"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
-            Nuevo insumo
-          </Button>
+          <Flex gap={8}>
+            <Input
+              placeholder="Buscar por nombre"
+              prefix={<SearchOutlined />}
+              allowClear
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              style={{ width: 240 }}
+            />
+            <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
+              Nuevo insumo
+            </Button>
+          </Flex>
         }
       >
-        <Table columns={columnas} dataSource={insumos} rowKey="id" loading={cargando} />
+        <Table
+          columns={columnas}
+          dataSource={insumosFiltrados}
+          rowKey="id"
+          loading={cargando}
+          locale={{ emptyText: busqueda ? 'Ningún insumo coincide con la búsqueda' : 'Sin insumos' }}
+        />
       </Card>
 
       <Modal

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Button, Card, Form, Input, Modal, Table, message } from 'antd';
-import { EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, Flex, Form, Input, Modal, Table, message } from 'antd';
+import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
 import { crearProveedor, listarProveedores, actualizarProveedor, type ProveedorPayload } from '../api/compras';
@@ -10,6 +10,7 @@ import type { Proveedor } from '../types';
 export function ProveedoresPage() {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [proveedorEditando, setProveedorEditando] = useState<Proveedor | null>(null);
@@ -25,6 +26,11 @@ export function ProveedoresPage() {
   }
 
   useEffect(cargarProveedores, []);
+
+  const proveedoresFiltrados = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    return texto ? proveedores.filter((p) => p.nombre.toLowerCase().includes(texto)) : proveedores;
+  }, [proveedores, busqueda]);
 
   function abrirNuevo() {
     setProveedorEditando(null);
@@ -82,12 +88,28 @@ export function ProveedoresPage() {
       <Card
         title="Proveedores"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
-            Nuevo proveedor
-          </Button>
+          <Flex gap={8}>
+            <Input
+              placeholder="Buscar por nombre"
+              prefix={<SearchOutlined />}
+              allowClear
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              style={{ width: 240 }}
+            />
+            <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
+              Nuevo proveedor
+            </Button>
+          </Flex>
         }
       >
-        <Table columns={columnas} dataSource={proveedores} rowKey="id" loading={cargando} />
+        <Table
+          columns={columnas}
+          dataSource={proveedoresFiltrados}
+          rowKey="id"
+          loading={cargando}
+          locale={{ emptyText: busqueda ? 'Ningún proveedor coincide con la búsqueda' : 'Sin proveedores' }}
+        />
       </Card>
 
       <Modal
