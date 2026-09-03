@@ -13,6 +13,7 @@ import com.panaderia.erp.ventas.dto.DetalleVentaResponse;
 import com.panaderia.erp.ventas.dto.EscaneoResponse;
 import com.panaderia.erp.ventas.dto.ItemVentaRequest;
 import com.panaderia.erp.ventas.dto.ProductoVendidoResumen;
+import com.panaderia.erp.ventas.dto.VentaPorMedioPagoResumen;
 import com.panaderia.erp.ventas.dto.VentaResponse;
 import com.panaderia.erp.ventas.dto.VentaTurnoResumen;
 import org.springframework.stereotype.Service;
@@ -126,6 +127,16 @@ public class VentaService {
     public List<VentaTurnoResumen> totalVendidoPorTurnoYUsuario(Instant desde, Instant hasta) {
         return ventaRepository.totalVendidoPorTurnoYUsuario(desde, hasta).stream()
                 .map(p -> new VentaTurnoResumen(p.getCajaId(), p.getUsuarioId(), p.getTotalVendido()))
+                .toList();
+    }
+
+    /**
+     * Total vendido y cantidad de ventas por medio de pago dentro de una caja puntual.
+     * La usa el módulo de caja para el resumen de un turno cerrado.
+     */
+    public List<VentaPorMedioPagoResumen> resumenPorMedioPago(Long cajaId) {
+        return ventaRepository.totalPorMedioPago(cajaId).stream()
+                .map(p -> new VentaPorMedioPagoResumen(p.getMedioPago(), p.getTotal(), p.getCantidad()))
                 .toList();
     }
 

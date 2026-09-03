@@ -1,5 +1,8 @@
 package com.panaderia.erp.caja;
 
+import com.panaderia.erp.caja.dto.CajaHistorialResponse;
+import com.panaderia.erp.caja.dto.CajaResumenResponse;
+import com.panaderia.erp.caja.dto.VentaPorMedioPagoDTO;
 import com.panaderia.erp.core.auditoria.AccionAuditoria;
 import com.panaderia.erp.core.auditoria.AuditoriaService;
 import com.panaderia.erp.core.exception.ConflictoException;
@@ -7,6 +10,9 @@ import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
 import com.panaderia.erp.core.exception.ValidacionNegocioException;
 import com.panaderia.erp.core.usuario.Usuario;
 import com.panaderia.erp.core.usuario.UsuarioRepository;
+import com.panaderia.erp.ventas.MedioPago;
+import com.panaderia.erp.ventas.VentaService;
+import com.panaderia.erp.ventas.dto.VentaPorMedioPagoResumen;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,15 +29,18 @@ public class CajaService {
     private final MovimientoCajaRepository movimientoCajaRepository;
     private final UsuarioRepository usuarioRepository;
     private final AuditoriaService auditoriaService;
+    private final VentaService ventaService;
 
     public CajaService(CajaRepository cajaRepository,
                         MovimientoCajaRepository movimientoCajaRepository,
                         UsuarioRepository usuarioRepository,
-                        AuditoriaService auditoriaService) {
+                        AuditoriaService auditoriaService,
+                        VentaService ventaService) {
         this.cajaRepository = cajaRepository;
         this.movimientoCajaRepository = movimientoCajaRepository;
         this.usuarioRepository = usuarioRepository;
         this.auditoriaService = auditoriaService;
+        this.ventaService = ventaService;
     }
 
     public Caja obtenerPorId(Long id) {
@@ -45,6 +54,62 @@ public class CajaService {
 
     public List<MovimientoCaja> listarMovimientos(Long cajaId) {
         return movimientoCajaRepository.findByCajaIdOrderByFechaDesc(cajaId);
+    }
+
+    /**
+     * Historial completo de turnos (abiertos y cerrados), del más reciente al más viejo.
+     * Solo lo consulta el módulo de caja para DUENO/ENCARGADO — ver historial de turnos pasados.
+     */
+    public List<CajaHistorialResponse> listarHistorial() {
+        return cajaRepository.findAllByOrderByFechaAperturaDesc().stream()
+                .map(caja -> CajaHistorialResponse.from(caja, nombreUsuario(caja.getUsuarioId())))
+                .toList();
+    }
+
+    private String nombreUsuario(Long usuarioId) {
+        return usuarioRepository.findById(usuarioId).map(Usuario::getNombre).orElse("—");
+    }
+
+    /**
+     * Resumen de un turno puntual: ventas agrupadas por medio de pago, ingresos/egresos manuales,
+     * y la diferencia entre el efectivo esperado (inicial + ventas en efectivo + ingresos - egresos)
+     * y el monto final contado al cierre.
+     */
+    public CajaResumenResponse obtenerResumen(Long cajaId) {
+        Caja caja = obtenerPorId(cajaId);
+        String usuarioNombre = nombreUsuario(caja.getUsuarioId());
+
+        List<VentaPorMedioPagoResumen> ventasPorMedio = ventaService.resumenPorMedioPago(cajaId);
+        List<MovimientoCaja> movimientos = movimientoCajaRepository.findByCajaIdOrderByFechaDesc(cajaId);
+
+        BigDecimal totalIngresos = sumarPorTipo(movimientos, TipoMovimientoCaja.INGRESO);
+        BigDecimal totalEgresos = sumarPorTipo(movimientos, TipoMovimientoCaja.EGRESO);
+
+        BigDecimal totalEfectivo = ventasPorMedio.stream()
+                .filter(v -> v.medioPago() == MedioPago.EFECTIVO)
+                .map(VentaPorMedioPagoResumen::total)
+                .findFirst()
+                .orElse(BigDecimal.ZERO);
+
+        BigDecimal totalVentas = ventasPorMedio.stream()
+                .map(VentaPorMedioPagoResumen::total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal efectivoEsperado = caja.getMontoInicial().add(totalEfectivo).add(totalIngresos).subtract(totalEgresos);
+        BigDecimal diferencia = caja.getMontoFinal() != null ? caja.getMontoFinal().subtract(efectivoEsperado) : null;
+
+        return new CajaResumenResponse(
+                caja.getId(), caja.getFechaApertura(), caja.getFechaCierre(),
+                caja.getMontoInicial(), caja.getMontoFinal(), caja.getUsuarioId(), usuarioNombre, caja.getEstado(),
+                ventasPorMedio.stream().map(VentaPorMedioPagoDTO::from).toList(),
+                totalVentas, totalIngresos, totalEgresos, efectivoEsperado, diferencia);
+    }
+
+    private BigDecimal sumarPorTipo(List<MovimientoCaja> movimientos, TipoMovimientoCaja tipo) {
+        return movimientos.stream()
+                .filter(m -> m.getTipo() == tipo)
+                .map(MovimientoCaja::getMonto)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     @Transactional

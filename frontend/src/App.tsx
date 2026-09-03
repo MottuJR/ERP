@@ -5,6 +5,7 @@ import { ProtectedRoute } from './auth/ProtectedRoute';
 import { NAV_ITEMS } from './layout/navItems';
 import { LoginPage } from './pages/LoginPage';
 import { CajaPage } from './pages/CajaPage';
+import { HistorialCajasPage } from './pages/HistorialCajasPage';
 import { PosPage } from './pages/PosPage';
 import { ProductosPage } from './pages/ProductosPage';
 import { InsumosPage } from './pages/InsumosPage';
@@ -30,6 +31,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/caja" element={protegida('/caja', <CajaPage />)} />
+          <Route path="/historial-cajas" element={protegida('/historial-cajas', <HistorialCajasPage />)} />
           <Route path="/pos" element={protegida('/pos', <PosPage />)} />
           <Route path="/productos" element={protegida('/productos', <ProductosPage />)} />
           <Route path="/insumos" element={protegida('/insumos', <InsumosPage />)} />

@@ -72,6 +72,40 @@ export interface MovimientoCaja {
   fecha: string;
 }
 
+export interface CajaHistorial {
+  id: number;
+  fechaApertura: string;
+  fechaCierre: string | null;
+  montoInicial: number;
+  montoFinal: number | null;
+  usuarioId: number;
+  usuarioNombre: string;
+  estado: EstadoCaja;
+}
+
+export interface VentaPorMedioPago {
+  medioPago: MedioPago;
+  total: number;
+  cantidad: number;
+}
+
+export interface CajaResumen {
+  id: number;
+  fechaApertura: string;
+  fechaCierre: string | null;
+  montoInicial: number;
+  montoFinal: number | null;
+  usuarioId: number;
+  usuarioNombre: string;
+  estado: EstadoCaja;
+  ventasPorMedioPago: VentaPorMedioPago[];
+  totalVentas: number;
+  totalIngresos: number;
+  totalEgresos: number;
+  efectivoEsperado: number;
+  diferencia: number | null;
+}
+
 export interface EscaneoResponse {
   productoId: number;
   productoNombre: string;

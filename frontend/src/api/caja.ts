@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { apiClient } from './client';
-import type { Caja, MovimientoCaja, TipoMovimientoCaja } from '../types';
+import type { Caja, CajaHistorial, CajaResumen, MovimientoCaja, TipoMovimientoCaja } from '../types';
 
 export async function obtenerCajaActual(): Promise<Caja | null> {
   try {
@@ -37,5 +37,15 @@ export interface MovimientoCajaPayload {
 
 export async function registrarMovimiento(id: number, payload: MovimientoCajaPayload): Promise<MovimientoCaja> {
   const { data } = await apiClient.post<MovimientoCaja>(`/api/caja/${id}/movimientos`, payload);
+  return data;
+}
+
+export async function listarHistorialCajas(): Promise<CajaHistorial[]> {
+  const { data } = await apiClient.get<CajaHistorial[]>('/api/caja');
+  return data;
+}
+
+export async function obtenerResumenCaja(id: number): Promise<CajaResumen> {
+  const { data } = await apiClient.get<CajaResumen>(`/api/caja/${id}/resumen`);
   return data;
 }

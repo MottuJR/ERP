@@ -27,11 +27,27 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
             """)
     List<VentaPorTurnoProjection> totalVendidoPorTurnoYUsuario(@Param("desde") Instant desde, @Param("hasta") Instant hasta);
 
+    @Query("""
+            select v.medioPago as medioPago, sum(v.total) as total, count(v) as cantidad
+            from Venta v
+            where v.cajaId = :cajaId
+            group by v.medioPago
+            """)
+    List<VentaPorMedioPagoProjection> totalPorMedioPago(@Param("cajaId") Long cajaId);
+
     interface VentaPorTurnoProjection {
         Long getCajaId();
 
         Long getUsuarioId();
 
         BigDecimal getTotalVendido();
+    }
+
+    interface VentaPorMedioPagoProjection {
+        MedioPago getMedioPago();
+
+        BigDecimal getTotal();
+
+        Long getCantidad();
     }
 }

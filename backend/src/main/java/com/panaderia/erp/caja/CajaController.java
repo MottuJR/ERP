@@ -1,7 +1,9 @@
 package com.panaderia.erp.caja;
 
 import com.panaderia.erp.caja.dto.AbrirCajaRequest;
+import com.panaderia.erp.caja.dto.CajaHistorialResponse;
 import com.panaderia.erp.caja.dto.CajaResponse;
+import com.panaderia.erp.caja.dto.CajaResumenResponse;
 import com.panaderia.erp.caja.dto.CerrarCajaRequest;
 import com.panaderia.erp.caja.dto.MovimientoCajaRequest;
 import com.panaderia.erp.caja.dto.MovimientoCajaResponse;
@@ -36,6 +38,18 @@ public class CajaController {
         return cajaService.obtenerCajaAbierta()
                 .map(CajaResponse::from)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No hay ninguna caja abierta"));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
+    public List<CajaHistorialResponse> historial() {
+        return cajaService.listarHistorial();
+    }
+
+    @GetMapping("/{id}/resumen")
+    @PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
+    public CajaResumenResponse resumen(@PathVariable Long id) {
+        return cajaService.obtenerResumen(id);
     }
 
     @GetMapping("/{id}")

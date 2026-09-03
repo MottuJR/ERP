@@ -11,6 +11,7 @@ export interface NavItem {
 // directo por URL) — así no hay forma de que queden desincronizados.
 export const NAV_ITEMS: NavItem[] = [
   { key: '/caja', label: 'Caja', roles: ['DUENO', 'ENCARGADO', 'VENDEDOR'] },
+  { key: '/historial-cajas', label: 'Historial de cajas', roles: ['DUENO', 'ENCARGADO'] },
   { key: '/pos', label: 'Venta', roles: ['DUENO', 'ENCARGADO', 'VENDEDOR'] },
   { key: '/productos', label: 'Productos', roles: ['DUENO', 'ENCARGADO'] },
   { key: '/insumos', label: 'Insumos', roles: ['DUENO', 'ENCARGADO'] },
