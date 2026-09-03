@@ -3,6 +3,7 @@ import { Button, Card, Flex, Form, InputNumber, Input, Modal, Select, Table, mes
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
+import { useAuth } from '../auth/AuthContext';
 import {
   actualizarInsumo,
   crearInsumo,
@@ -16,6 +17,9 @@ import type { Insumo } from '../types';
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
 export function InsumosPage() {
+  const { hasRole } = useAuth();
+  const puedeEditar = hasRole('DUENO', 'ENCARGADO');
+
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
@@ -102,11 +106,17 @@ export function InsumosPage() {
       dataIndex: 'costoUnitario',
       render: (valor: number) => formatoMoneda.format(valor),
     },
-    {
-      title: '',
-      width: 60,
-      render: (_, insumo) => <Button type="text" icon={<EditOutlined />} onClick={() => abrirEdicion(insumo)} />,
-    },
+    ...(puedeEditar
+      ? [
+          {
+            title: '',
+            width: 60,
+            render: (_: unknown, insumo: Insumo) => (
+              <Button type="text" icon={<EditOutlined />} onClick={() => abrirEdicion(insumo)} />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -123,9 +133,11 @@ export function InsumosPage() {
               onChange={(e) => setBusqueda(e.target.value)}
               style={{ width: 240 }}
             />
-            <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
-              Nuevo insumo
-            </Button>
+            {puedeEditar && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={abrirNuevo}>
+                Nuevo insumo
+              </Button>
+            )}
           </Flex>
         }
       >

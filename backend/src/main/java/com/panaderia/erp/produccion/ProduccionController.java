@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/produccion")
-@PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO')")
+@PreAuthorize("hasAnyRole('DUENO', 'ENCARGADO', 'PRODUCCION')")
 public class ProduccionController {
 
     private final RecetaService recetaService;

@@ -11,18 +11,19 @@ import {
   type CrearUsuarioPayload,
 } from '../api/usuarios';
 import { mensajeDeError } from '../api/client';
-import type { Usuario } from '../types';
+import type { Rol, Usuario } from '../types';
 
 const ROLES = [
   { value: 'DUENO', label: 'Dueño' },
   { value: 'ENCARGADO', label: 'Encargado' },
   { value: 'VENDEDOR', label: 'Vendedor' },
+  { value: 'PRODUCCION', label: 'Producción' },
 ];
 
 interface FormValues {
   nombre: string;
   email: string;
-  rol: 'DUENO' | 'ENCARGADO' | 'VENDEDOR';
+  rol: Rol;
   porcentajeComision: number | null;
   activo: boolean;
   password?: string;

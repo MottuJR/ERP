@@ -5,7 +5,7 @@ import type { Usuario } from '../types';
 interface AuthContextValue {
   usuario: Usuario | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<Usuario>;
   logout: () => void;
   hasRole: (...roles: Usuario['rol'][]) => boolean;
 }
@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(USUARIO_KEY, JSON.stringify(response.usuario));
     setToken(response.token);
     setUsuario(response.usuario);
+    return response.usuario;
   }
 
   function logout() {

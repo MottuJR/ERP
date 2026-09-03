@@ -3,7 +3,9 @@ import { Alert, Button, Card, Form, Input, Typography } from 'antd';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { primeraRutaPermitida } from '../layout/navItems';
 import { mensajeDeError } from '../api/client';
+import type { Rol } from '../types';
 
 interface LoginFormValues {
   email: string;
@@ -11,14 +13,14 @@ interface LoginFormValues {
 }
 
 export function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
   if (isAuthenticated) {
-    const destino = (location.state as { from?: string } | null)?.from ?? '/pos';
+    const destino = (location.state as { from?: string } | null)?.from ?? primeraRutaPermitida(hasRole);
     return <Navigate to={destino} replace />;
   }
 
@@ -26,8 +28,11 @@ export function LoginPage() {
     setError(null);
     setCargando(true);
     try {
-      await login(values.email, values.password);
-      navigate('/pos', { replace: true });
+      const usuario = await login(values.email, values.password);
+      const destino =
+        (location.state as { from?: string } | null)?.from ??
+        primeraRutaPermitida((...roles: Rol[]) => roles.includes(usuario.rol));
+      navigate(destino, { replace: true });
     } catch (err) {
       setError(mensajeDeError(err, 'No se pudo iniciar sesión'));
     } finally {

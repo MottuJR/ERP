@@ -14,9 +14,9 @@ export const NAV_ITEMS: NavItem[] = [
   { key: '/historial-cajas', label: 'Historial de cajas', roles: ['DUENO', 'ENCARGADO'] },
   { key: '/pos', label: 'Venta', roles: ['DUENO', 'ENCARGADO', 'VENDEDOR'] },
   { key: '/productos', label: 'Productos', roles: ['DUENO', 'ENCARGADO'] },
-  { key: '/insumos', label: 'Insumos', roles: ['DUENO', 'ENCARGADO'] },
-  { key: '/recetas', label: 'Recetas', roles: ['DUENO', 'ENCARGADO'] },
-  { key: '/produccion', label: 'Producción', roles: ['DUENO', 'ENCARGADO'] },
+  { key: '/insumos', label: 'Insumos', roles: ['DUENO', 'ENCARGADO', 'PRODUCCION'] },
+  { key: '/recetas', label: 'Recetas', roles: ['DUENO', 'ENCARGADO', 'PRODUCCION'] },
+  { key: '/produccion', label: 'Producción', roles: ['DUENO', 'ENCARGADO', 'PRODUCCION'] },
   { key: '/proveedores', label: 'Proveedores', roles: ['DUENO', 'ENCARGADO'] },
   { key: '/compras', label: 'Compras', roles: ['DUENO', 'ENCARGADO'] },
   { key: '/clientes', label: 'Clientes', roles: ['DUENO', 'ENCARGADO'] },
@@ -25,3 +25,15 @@ export const NAV_ITEMS: NavItem[] = [
   { key: '/auditoria', label: 'Auditoría', roles: ['DUENO'] },
   { key: '/usuarios', label: 'Usuarios', roles: ['DUENO'] },
 ];
+
+// Destino de redirect cuando el usuario entra a una ruta que no le corresponde (o hace login).
+// "/pos" sigue siendo la pantalla por defecto de siempre para quien puede venderla; para un rol
+// que no vende (ej. PRODUCCION) no puede ser un path fijo, así que cae a su primera sección
+// disponible en NAV_ITEMS.
+export function primeraRutaPermitida(hasRole: (...roles: Rol[]) => boolean): string {
+  const pos = NAV_ITEMS.find((item) => item.key === '/pos');
+  if (pos && hasRole(...pos.roles)) {
+    return '/pos';
+  }
+  return NAV_ITEMS.find((item) => hasRole(...item.roles))?.key ?? '/login';
+}
