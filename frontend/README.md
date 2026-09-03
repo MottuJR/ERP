@@ -31,6 +31,7 @@ Usuario de prueba (seed de desarrollo del backend): `admin@panaderia.local` / `c
   - Si el medio de pago es "Cuenta corriente" aparece un selector de cliente (solo lista los que tienen `tieneCuentaCorriente = true`) y no deja confirmar sin elegir uno.
   - "Confirmar venta" llama a `POST /api/ventas` con el `cajaId` de la caja actual, que descuenta stock en el backend. Atajo de teclado: `Ctrl+Enter` confirma la venta desde cualquier parte de la pantalla sin soltar el mouse.
 - **Productos** (`/productos`), **Insumos** (`/insumos`), **Clientes** (`/clientes`): alta/edición en un modal, mismo patrón que Proveedores. Productos permite además dar de baja (soft-delete) y crear una categoría nueva al vuelo desde el propio formulario.
+  - Clientes muestra además una columna "Saldo" para los que tienen cuenta corriente habilitada (`GET /api/clientes/{id}/saldo` por cada uno) y un botón "Cuenta corriente" que abre el historial de pagos y permite registrar uno nuevo (`GET`/`POST /api/clientes/{id}/pagos`) — el saldo siempre fue calculado bien en el backend (ventas a cuenta corriente menos pagos), pero antes no había ninguna pantalla que lo mostrara.
 - **Recetas** (`/recetas`): elegís un producto elaborado, cargás/editás los ítems (insumo + cantidad por unidad de producto) y guardás contra `POST`/`PUT /api/produccion/recetas`.
   - Por cada ítem muestra su costo (`costoUnitario` del insumo × cantidad) y el costo total de la receta — todo calculado en el cliente a partir de los insumos ya cargados, sin pedirle nada nuevo al backend.
   - Con el precio de venta actual del producto calcula el margen actual **como markup sobre el costo** (`(precioVenta - costo) / costo`, sin techo) — a propósito distinto del "margen %" que muestra `GET /api/reportes/margen-productos` (que es `(precioVenta - costo) / precioVenta`, ese sí acotado a <100% por definición). Un campo de "margen deseado" (sin límite superior, puede ser 2000% o lo que haga falta) sugiere el precio de venta correspondiente, y "Aplicar como precio de venta" lo guarda contra `PUT /api/productos/{id}`.
@@ -45,7 +46,6 @@ Usuario de prueba (seed de desarrollo del backend): `admin@panaderia.local` / `c
 
 ## Qué falta (fuera del alcance de esta etapa)
 
-- Pantalla para registrar pagos de cuenta corriente y ver el saldo de un cliente (el backend ya expone `GET /api/clientes/{id}/saldo` y `POST /api/clientes/{id}/pagos`).
 - Arqueo de caja (comparar el monto final contado contra el esperado según ventas en efectivo + movimientos) — hoy `Cerrar caja` solo pide el monto contado, sin comparar contra nada. El backend tampoco lo calcula todavía.
 - Las pantallas de Usuarios y Caja son agregados fuera de una fase (a pedido explícito, en paralelo a la Fase 4). El resto de "qué falta" en este archivo sigue pendiente de una futura vuelta de pulido del frontend.
 - Pulido visual adicional, manejo de sesión expirada más prolijo, tests de frontend.
