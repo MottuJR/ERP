@@ -1,6 +1,6 @@
 package com.panaderia.erp.auth.controller;
 
-import com.panaderia.erp.auth.dto.ActualizarComisionRequest;
+import com.panaderia.erp.auth.dto.ActualizarUsuarioRequest;
 import com.panaderia.erp.auth.dto.CrearUsuarioRequest;
 import com.panaderia.erp.auth.dto.UsuarioResponse;
 import com.panaderia.erp.core.exception.ConflictoException;
@@ -61,14 +61,25 @@ public class UsuarioController {
         return ResponseEntity.status(HttpStatus.CREATED).body(UsuarioResponse.from(usuario));
     }
 
-    @PutMapping("/{id}/comision")
+    @PutMapping("/{id}")
     @Transactional
-    public UsuarioResponse actualizarComision(@PathVariable Long id,
-                                               @Valid @RequestBody ActualizarComisionRequest request) {
+    public UsuarioResponse actualizar(@PathVariable Long id, @Valid @RequestBody ActualizarUsuarioRequest request) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado: " + id));
 
+        if (!usuario.getEmail().equalsIgnoreCase(request.email()) && usuarioRepository.existsByEmail(request.email())) {
+            throw new ConflictoException("Ya existe un usuario con ese email");
+        }
+
+        usuario.setNombre(request.nombre());
+        usuario.setEmail(request.email());
+        usuario.setRol(request.rol());
+        usuario.setActivo(request.activo());
         usuario.setPorcentajeComision(request.porcentajeComision());
+
+        if (request.password() != null && !request.password().isBlank()) {
+            usuario.setPasswordHash(passwordEncoder.encode(request.password()));
+        }
 
         return UsuarioResponse.from(usuario);
     }

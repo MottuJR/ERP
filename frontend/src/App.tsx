@@ -15,6 +15,7 @@ import { ClientesPage } from './pages/ClientesPage';
 import { ReportesPage } from './pages/ReportesPage';
 import { ComisionesPage } from './pages/ComisionesPage';
 import { AuditoriaPage } from './pages/AuditoriaPage';
+import { UsuariosPage } from './pages/UsuariosPage';
 
 function protegida(path: string, element: ReactNode) {
   const roles = NAV_ITEMS.find((item) => item.key === path)?.roles;
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/reportes" element={protegida('/reportes', <ReportesPage />)} />
           <Route path="/comisiones" element={protegida('/comisiones', <ComisionesPage />)} />
           <Route path="/auditoria" element={protegida('/auditoria', <AuditoriaPage />)} />
+          <Route path="/usuarios" element={protegida('/usuarios', <UsuariosPage />)} />
           <Route path="*" element={<Navigate to="/pos" replace />} />
         </Routes>
       </BrowserRouter>

@@ -21,4 +21,5 @@ export const NAV_ITEMS: NavItem[] = [
   { key: '/reportes', label: 'Reportes', roles: ['DUENO', 'ENCARGADO'] },
   { key: '/comisiones', label: 'Comisiones', roles: ['DUENO'] },
   { key: '/auditoria', label: 'Auditoría', roles: ['DUENO'] },
+  { key: '/usuarios', label: 'Usuarios', roles: ['DUENO'] },
 ];

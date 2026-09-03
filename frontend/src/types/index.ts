@@ -6,6 +6,7 @@ export interface Usuario {
   email: string;
   rol: Rol;
   activo: boolean;
+  porcentajeComision: number | null;
 }
 
 export interface LoginResponse {

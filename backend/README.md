@@ -47,6 +47,7 @@ Esto es solo para desarrollo. Antes de ir a producción hay que cambiar la contr
 | GET | `/api/auth/me` | autenticado | Datos del usuario logueado |
 | GET | `/api/usuarios` | rol `DUENO` | Lista todos los usuarios |
 | POST | `/api/usuarios` | rol `DUENO` | Crea un usuario nuevo (encargado/vendedor/etc.) |
+| PUT | `/api/usuarios/{id}` | rol `DUENO` | Edita nombre, email, rol, activo y porcentaje de comisión; `password` es opcional (si no se manda, no se toca) |
 
 Para los endpoints protegidos, mandar el JWT en el header:
 

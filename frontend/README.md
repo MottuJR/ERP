@@ -36,11 +36,13 @@ Usuario de prueba (seed de desarrollo del backend): `admin@panaderia.local` / `c
 - **Reportes** (`/reportes`): un selector de rango de fechas y cuatro pestañas con tablas simples — ventas por período (con desglose por día), productos más vendidos, margen por producto, y stock crítico.
 - **Comisiones** (`/comisiones`, solo `DUENO`): mismo selector de rango de fechas, con tablas de comisión de vendedores (por turno) y de producción.
 - **Auditoría** (`/auditoria`, solo `DUENO`): tabla con el historial de `GET /api/auditoria`, filtrable por entidad.
+- **Usuarios** (`/usuarios`, solo `DUENO`): alta y edición de usuarios (nombre, email, rol, porcentaje de comisión, activo/inactivo y reseteo opcional de contraseña), mismo patrón modal que Clientes/Productos. Contra `POST`/`PUT /api/usuarios`.
 - Un interceptor de Axios (`src/api/client.ts`) agrega el JWT a cada request y desloguea automáticamente ante un 401.
 
 ## Qué falta (fuera del alcance de esta etapa)
 
 - Pantalla para registrar pagos de cuenta corriente y ver el saldo de un cliente (el backend ya expone `GET /api/clientes/{id}/saldo` y `POST /api/clientes/{id}/pagos`).
+- La pantalla de Usuarios es la única cosa nueva agregada fuera de una fase (a pedido explícito, en paralelo a la Fase 4). El resto de "qué falta" en este archivo sigue pendiente de una futura vuelta de pulido del frontend.
 - Pantalla de gestión de caja e inventario (movimientos manuales) — el backend ya tiene los endpoints.
 - Pulido visual adicional, manejo de sesión expirada más prolijo, tests de frontend.
 - Fase 5 del roadmap (generalización a futuro) no se aborda todavía.
@@ -53,9 +55,9 @@ Con Docker ya funcionando se pudo probar contra un backend real (no solo simulad
 
 ```
 src/
-├── api/        # cliente Axios + funciones por recurso (auth, productos, categorias, inventario, ventas, produccion, compras, clientes, comisiones, reportes, auditoria)
+├── api/        # cliente Axios + funciones por recurso (auth, usuarios, productos, categorias, inventario, ventas, produccion, compras, clientes, comisiones, reportes, auditoria)
 ├── auth/       # AuthContext (JWT + usuario en localStorage) y ProtectedRoute (soporta bloqueo por rol)
 ├── layout/     # AppLayout (header + navegación) y navItems.ts (fuente única de rutas + roles)
-├── pages/      # LoginPage, PosPage, ProductosPage, InsumosPage, ClientesPage, RecetasPage, ProduccionPage, ProveedoresPage, ComprasPage, ReportesPage, ComisionesPage, AuditoriaPage
+├── pages/      # LoginPage, PosPage, ProductosPage, InsumosPage, ClientesPage, RecetasPage, ProduccionPage, ProveedoresPage, ComprasPage, ReportesPage, ComisionesPage, AuditoriaPage, UsuariosPage
 └── types/      # tipos TS que reflejan los DTOs del backend
 ```
