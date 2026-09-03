@@ -17,7 +17,7 @@ export function ProduccionPage() {
   const [errorReceta, setErrorReceta] = useState<string | null>(null);
   const [cargandoReceta, setCargandoReceta] = useState(false);
 
-  const [cantidad, setCantidad] = useState<number>(1);
+  const [cantidad, setCantidad] = useState<number | null>(1);
   const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export function ProduccionPage() {
   }
 
   async function handleConfirmar() {
-    if (!productoId || cantidad <= 0) return;
+    if (!productoId || !cantidad || cantidad <= 0) return;
 
     setConfirmando(true);
     try {
@@ -92,7 +92,7 @@ export function ProduccionPage() {
             <>
               <Space align="center">
                 <Typography.Text>Cantidad a producir:</Typography.Text>
-                <InputNumber min={0.001} step={1} value={cantidad} onChange={(v) => setCantidad(v ?? 0)} />
+                <InputNumber min={0.001} step={1} value={cantidad} onChange={(v) => setCantidad(v)} />
               </Space>
 
               <Typography.Text type="secondary">Esto es lo que se va a descontar de insumos:</Typography.Text>
@@ -102,7 +102,7 @@ export function ProduccionPage() {
                 type="primary"
                 size="large"
                 loading={confirmando}
-                disabled={cantidad <= 0}
+                disabled={!cantidad || cantidad <= 0}
                 onClick={handleConfirmar}
               >
                 Confirmar producción

@@ -11,8 +11,8 @@ import type { Insumo, Proveedor } from '../types';
 interface FilaCompra {
   key: string;
   insumoId?: number;
-  cantidad: number;
-  costoUnitario: number;
+  cantidad: number | null;
+  costoUnitario: number | null;
 }
 
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
@@ -37,7 +37,7 @@ export function ComprasPage() {
   }, []);
 
   const total = useMemo(
-    () => filas.reduce((acc, f) => acc + f.cantidad * f.costoUnitario, 0),
+    () => filas.reduce((acc, f) => acc + (f.cantidad ?? 0) * (f.costoUnitario ?? 0), 0),
     [filas],
   );
 
@@ -59,7 +59,9 @@ export function ComprasPage() {
       return;
     }
 
-    const items = filas.filter((f) => f.insumoId !== undefined && f.cantidad > 0 && f.costoUnitario > 0);
+    const items = filas.filter(
+      (f) => f.insumoId !== undefined && (f.cantidad ?? 0) > 0 && (f.costoUnitario ?? 0) > 0,
+    );
     if (items.length === 0) {
       message.warning('Agregá al menos un ítem con insumo, cantidad y costo');
       return;
@@ -69,7 +71,11 @@ export function ComprasPage() {
     try {
       const compra = await confirmarCompra(
         proveedorId,
-        items.map((f) => ({ insumoId: f.insumoId as number, cantidad: f.cantidad, costoUnitario: f.costoUnitario })),
+        items.map((f) => ({
+          insumoId: f.insumoId as number,
+          cantidad: f.cantidad as number,
+          costoUnitario: f.costoUnitario as number,
+        })),
       );
       message.success(`Compra #${compra.id} confirmada — total ${formatoMoneda.format(compra.total)}`);
       setFilas([]);
@@ -105,7 +111,7 @@ export function ComprasPage() {
           step={1}
           style={{ width: '100%' }}
           value={fila.cantidad}
-          onChange={(v) => actualizarFila(fila.key, { cantidad: v ?? 0 })}
+          onChange={(v) => actualizarFila(fila.key, { cantidad: v })}
         />
       ),
     },
@@ -118,14 +124,14 @@ export function ComprasPage() {
           step={10}
           style={{ width: '100%' }}
           value={fila.costoUnitario}
-          onChange={(v) => actualizarFila(fila.key, { costoUnitario: v ?? 0 })}
+          onChange={(v) => actualizarFila(fila.key, { costoUnitario: v })}
         />
       ),
     },
     {
       title: 'Subtotal',
       width: 140,
-      render: (_, fila) => formatoMoneda.format(fila.cantidad * fila.costoUnitario),
+      render: (_, fila) => formatoMoneda.format((fila.cantidad ?? 0) * (fila.costoUnitario ?? 0)),
     },
     {
       title: '',

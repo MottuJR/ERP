@@ -13,7 +13,7 @@ import type { Insumo, Producto } from '../types';
 interface FilaReceta {
   key: string;
   insumoId?: number;
-  cantidad: number;
+  cantidad: number | null;
 }
 
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
@@ -29,7 +29,7 @@ export function RecetasPage() {
   const [cargandoReceta, setCargandoReceta] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
-  const [margenDeseado, setMargenDeseado] = useState<number>(30);
+  const [margenDeseado, setMargenDeseado] = useState<number | null>(30);
   const [aplicandoPrecio, setAplicandoPrecio] = useState(false);
 
   useEffect(() => {
@@ -73,20 +73,21 @@ export function RecetasPage() {
       filas.reduce((acc, fila) => {
         if (fila.insumoId === undefined) return acc;
         const costoUnitario = costoUnitarioPorInsumo.get(fila.insumoId) ?? 0;
-        return acc + costoUnitario * fila.cantidad;
+        return acc + costoUnitario * (fila.cantidad ?? 0);
       }, 0),
     [filas, costoUnitarioPorInsumo],
   );
 
-  // Mismo criterio que ReportesService.margenPorProducto: margen = (precioVenta - costo) /
-  // precioVenta, o sea "qué porcentaje del precio final es ganancia" (no markup sobre costo).
+  // Margen como markup sobre el costo (no como % del precio, que es lo que usa el reporte de
+  // margen por producto) -- así puede superar el 100% sin problema: un producto que se vende
+  // al triple de su costo tiene 200% de margen sobre costo, no "un margen imposible".
   const margenActual =
-    productoSeleccionado && productoSeleccionado.precioVenta > 0
-      ? ((productoSeleccionado.precioVenta - costoTotal) / productoSeleccionado.precioVenta) * 100
+    productoSeleccionado && costoTotal > 0
+      ? ((productoSeleccionado.precioVenta - costoTotal) / costoTotal) * 100
       : null;
 
   const precioSugerido =
-    costoTotal > 0 && margenDeseado < 100 ? costoTotal / (1 - margenDeseado / 100) : null;
+    costoTotal > 0 && margenDeseado !== null ? costoTotal * (1 + margenDeseado / 100) : null;
 
   async function handleAplicarPrecio() {
     if (!productoSeleccionado || precioSugerido === null) return;
@@ -141,9 +142,14 @@ export function RecetasPage() {
       return;
     }
 
+    if (items.some((f) => !f.cantidad || f.cantidad <= 0)) {
+      message.warning('Todos los ítems necesitan una cantidad mayor a 0');
+      return;
+    }
+
     setGuardando(true);
     try {
-      const payload = items.map((f) => ({ insumoId: f.insumoId as number, cantidad: f.cantidad }));
+      const payload = items.map((f) => ({ insumoId: f.insumoId as number, cantidad: f.cantidad as number }));
       if (recetaExiste) {
         await actualizarReceta(productoId, payload);
       } else {
@@ -182,7 +188,7 @@ export function RecetasPage() {
           step={0.1}
           style={{ width: '100%' }}
           value={fila.cantidad}
-          onChange={(v) => actualizarFila(fila.key, { cantidad: v ?? 0 })}
+          onChange={(v) => actualizarFila(fila.key, { cantidad: v })}
         />
       ),
     },
@@ -192,7 +198,7 @@ export function RecetasPage() {
       render: (_, fila) => {
         if (fila.insumoId === undefined) return '—';
         const costoUnitario = costoUnitarioPorInsumo.get(fila.insumoId) ?? 0;
-        return formatoMoneda.format(costoUnitario * fila.cantidad);
+        return formatoMoneda.format(costoUnitario * (fila.cantidad ?? 0));
       },
     },
     {
@@ -257,22 +263,21 @@ export function RecetasPage() {
                       {productoSeleccionado && (
                         <Typography.Text type="secondary">
                           Precio de venta actual: {formatoMoneda.format(productoSeleccionado.precioVenta)}
-                          {margenActual !== null && ` (margen actual: ${margenActual.toFixed(1)}%)`}
+                          {margenActual !== null && ` (margen sobre costo actual: ${margenActual.toFixed(1)}%)`}
                         </Typography.Text>
                       )}
                     </div>
 
                     <Flex vertical gap={4} align="flex-end">
                       <Flex align="center" gap={8}>
-                        <Typography.Text>Margen deseado</Typography.Text>
+                        <Typography.Text>Margen deseado (sobre costo)</Typography.Text>
                         <InputNumber
                           min={0}
-                          max={99}
                           step={5}
                           suffix="%"
-                          style={{ width: 100 }}
+                          style={{ width: 110 }}
                           value={margenDeseado}
-                          onChange={(v) => setMargenDeseado(v ?? 0)}
+                          onChange={(v) => setMargenDeseado(v)}
                         />
                       </Flex>
                       <Typography.Text type="secondary">

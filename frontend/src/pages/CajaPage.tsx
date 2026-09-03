@@ -21,11 +21,11 @@ export function CajaPage() {
   const [cargando, setCargando] = useState(true);
 
   const [abrirAbierto, setAbrirAbierto] = useState(false);
-  const [montoInicial, setMontoInicial] = useState<number>(0);
+  const [montoInicial, setMontoInicial] = useState<number | null>(0);
   const [abriendo, setAbriendo] = useState(false);
 
   const [cerrarAbierto, setCerrarAbierto] = useState(false);
-  const [montoFinal, setMontoFinal] = useState<number>(0);
+  const [montoFinal, setMontoFinal] = useState<number | null>(0);
   const [cerrando, setCerrando] = useState(false);
 
   const [movimientoAbierto, setMovimientoAbierto] = useState(false);
@@ -51,7 +51,7 @@ export function CajaPage() {
   async function handleAbrir() {
     setAbriendo(true);
     try {
-      await abrirCaja(montoInicial);
+      await abrirCaja(montoInicial ?? 0);
       message.success('Caja abierta');
       setAbrirAbierto(false);
       setMontoInicial(0);
@@ -67,7 +67,7 @@ export function CajaPage() {
     if (!caja) return;
     setCerrando(true);
     try {
-      await cerrarCaja(caja.id, montoFinal);
+      await cerrarCaja(caja.id, montoFinal ?? 0);
       message.success('Caja cerrada');
       setCerrarAbierto(false);
       setMontoFinal(0);
@@ -176,7 +176,7 @@ export function CajaPage() {
           step={100}
           style={{ width: '100%', marginTop: 8 }}
           value={montoInicial}
-          onChange={(v) => setMontoInicial(v ?? 0)}
+          onChange={(v) => setMontoInicial(v)}
           autoFocus
         />
       </Modal>
@@ -194,7 +194,7 @@ export function CajaPage() {
           step={100}
           style={{ width: '100%', marginTop: 8 }}
           value={montoFinal}
-          onChange={(v) => setMontoFinal(v ?? 0)}
+          onChange={(v) => setMontoFinal(v)}
           autoFocus
         />
       </Modal>

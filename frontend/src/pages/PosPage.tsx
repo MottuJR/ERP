@@ -32,7 +32,7 @@ interface ItemCarrito {
   productoNombre: string;
   seVendePorPeso: boolean;
   unidadMedida: string;
-  cantidad: number;
+  cantidad: number | null;
   precioUnitario: number;
 }
 
@@ -47,7 +47,7 @@ export function PosPage() {
   const [escaneando, setEscaneando] = useState(false);
 
   const [productoManualId, setProductoManualId] = useState<number | undefined>();
-  const [cantidadManual, setCantidadManual] = useState<number>(1);
+  const [cantidadManual, setCantidadManual] = useState<number | null>(1);
 
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [medioPago, setMedioPago] = useState<MedioPago>('EFECTIVO');
@@ -88,7 +88,7 @@ export function PosPage() {
   }, []);
 
   const total = useMemo(
-    () => carrito.reduce((acc, item) => acc + item.cantidad * item.precioUnitario, 0),
+    () => carrito.reduce((acc, item) => acc + (item.cantidad ?? 0) * item.precioUnitario, 0),
     [carrito],
   );
 
@@ -126,7 +126,7 @@ export function PosPage() {
 
   function handleAgregarManual() {
     const producto = productos.find((p) => p.id === productoManualId);
-    if (!producto || cantidadManual <= 0) return;
+    if (!producto || !cantidadManual || cantidadManual <= 0) return;
 
     setCarrito((prev) => [
       ...prev,
@@ -148,7 +148,7 @@ export function PosPage() {
     setCarrito((prev) => prev.filter((item) => item.key !== key));
   }
 
-  function handleCambiarCantidad(key: string, cantidad: number) {
+  function handleCambiarCantidad(key: string, cantidad: number | null) {
     setCarrito((prev) => prev.map((item) => (item.key === key ? { ...item, cantidad } : item)));
   }
 
@@ -160,12 +160,17 @@ export function PosPage() {
       return;
     }
 
+    if (carrito.some((item) => !item.cantidad || item.cantidad <= 0)) {
+      message.warning('Hay un ítem del carrito sin una cantidad válida');
+      return;
+    }
+
     setConfirmando(true);
     try {
       const items: ItemVentaPayload[] = carrito.map((item) =>
         item.codigoEscaneado
-          ? { codigoEscaneado: item.codigoEscaneado, cantidad: item.cantidad }
-          : { productoId: item.productoId, cantidad: item.cantidad },
+          ? { codigoEscaneado: item.codigoEscaneado, cantidad: item.cantidad as number }
+          : { productoId: item.productoId, cantidad: item.cantidad as number },
       );
 
       const venta = await confirmarVenta({
@@ -211,14 +216,14 @@ export function PosPage() {
       render: (_, item) =>
         item.seVendePorPeso ? (
           <span>
-            {item.cantidad.toFixed(3)} kg
+            {(item.cantidad ?? 0).toFixed(3)} kg
           </span>
         ) : (
           <InputNumber
             min={1}
             step={1}
             value={item.cantidad}
-            onChange={(valor) => handleCambiarCantidad(item.key, valor ?? 1)}
+            onChange={(valor) => handleCambiarCantidad(item.key, valor)}
           />
         ),
     },
@@ -231,7 +236,7 @@ export function PosPage() {
     {
       title: 'Subtotal',
       width: 140,
-      render: (_, item) => formatoMoneda.format(item.cantidad * item.precioUnitario),
+      render: (_, item) => formatoMoneda.format((item.cantidad ?? 0) * item.precioUnitario),
     },
     {
       title: '',
@@ -298,7 +303,7 @@ export function PosPage() {
               <InputNumber
                 min={1}
                 value={cantidadManual}
-                onChange={(v) => setCantidadManual(v ?? 1)}
+                onChange={(v) => setCantidadManual(v)}
                 onPressEnter={handleAgregarManual}
               />
               <Button onClick={handleAgregarManual} disabled={!productoManualId}>
@@ -353,7 +358,10 @@ export function PosPage() {
               block
               style={{ marginTop: 16 }}
               disabled={
-                carrito.length === 0 || !cajaActual || (medioPago === 'CUENTA_CORRIENTE' && !clienteId)
+                carrito.length === 0 ||
+                !cajaActual ||
+                (medioPago === 'CUENTA_CORRIENTE' && !clienteId) ||
+                carrito.some((item) => !item.cantidad || item.cantidad <= 0)
               }
               loading={confirmando}
               onClick={handleConfirmarVenta}
