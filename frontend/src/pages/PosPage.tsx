@@ -9,6 +9,7 @@ import {
   InputNumber,
   Modal,
   Row,
+  Segmented,
   Select,
   Table,
   Typography,
@@ -49,6 +50,8 @@ export function PosPage() {
 
   const [productoManualId, setProductoManualId] = useState<number | undefined>();
   const [cantidadManual, setCantidadManual] = useState<number | null>(1);
+  const [modoCargaManual, setModoCargaManual] = useState<'peso' | 'monto'>('peso');
+  const [montoManual, setMontoManual] = useState<number | null>(null);
 
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [medioPago, setMedioPago] = useState<MedioPago>('EFECTIVO');
@@ -166,9 +169,19 @@ export function PosPage() {
 
   const productoManualSeleccionado = productos.find((p) => p.id === productoManualId);
 
+  // Cuando se carga por monto, la cantidad equivalente en kg se redondea a 3 decimales —
+  // misma precisión que usa el resto de la app para pesos (balanza, recetas, etc).
+  const cantidadPorMonto =
+    productoManualSeleccionado && montoManual
+      ? Math.round((montoManual / productoManualSeleccionado.precioVenta) * 1000) / 1000
+      : null;
+
   function handleAgregarManual() {
     const producto = productos.find((p) => p.id === productoManualId);
-    if (!producto || !cantidadManual || cantidadManual <= 0) return;
+    if (!producto) return;
+
+    const cantidad = producto.seVendePorPeso && modoCargaManual === 'monto' ? cantidadPorMonto : cantidadManual;
+    if (!cantidad || cantidad <= 0) return;
 
     setCarrito((prev) => [
       ...prev,
@@ -178,12 +191,14 @@ export function PosPage() {
         productoNombre: producto.nombre,
         seVendePorPeso: producto.seVendePorPeso,
         unidadMedida: producto.seVendePorPeso ? 'kg' : 'un.',
-        cantidad: cantidadManual,
+        cantidad,
         precioUnitario: producto.precioVenta,
       },
     ]);
     setProductoManualId(undefined);
     setCantidadManual(1);
+    setModoCargaManual('peso');
+    setMontoManual(null);
   }
 
   function handleQuitar(key: string) {
@@ -328,16 +343,17 @@ export function PosPage() {
             </Flex>
 
             <Typography.Text type="secondary">Buscar producto manualmente</Typography.Text>
-            <Flex gap={8} style={{ marginTop: 8 }}>
+            <Flex vertical gap={8} style={{ marginTop: 8 }}>
               <Select
                 showSearch
                 placeholder="Producto"
-                style={{ flex: 1 }}
                 loading={cargandoProductos}
                 value={productoManualId}
                 onChange={(v) => {
                   setProductoManualId(v);
                   setCantidadManual(1);
+                  setModoCargaManual('peso');
+                  setMontoManual(null);
                 }}
                 optionFilterProp="label"
                 options={productos.map((p) => ({
@@ -345,16 +361,52 @@ export function PosPage() {
                   label: `${p.nombre} — ${formatoMoneda.format(p.precioVenta)}`,
                 }))}
               />
-              <InputNumber
-                min={productoManualSeleccionado?.seVendePorPeso ? 0.001 : 1}
-                step={productoManualSeleccionado?.seVendePorPeso ? 0.1 : 1}
-                value={cantidadManual}
-                onChange={(v) => setCantidadManual(v)}
-                onPressEnter={handleAgregarManual}
-              />
-              <Button onClick={handleAgregarManual} disabled={!productoManualId}>
-                Agregar
-              </Button>
+
+              {productoManualSeleccionado?.seVendePorPeso && (
+                <Segmented
+                  value={modoCargaManual}
+                  onChange={(v) => setModoCargaManual(v as 'peso' | 'monto')}
+                  options={[
+                    { label: 'Por peso (kg)', value: 'peso' },
+                    { label: 'Por monto ($)', value: 'monto' },
+                  ]}
+                />
+              )}
+
+              <Flex gap={8}>
+                {productoManualSeleccionado?.seVendePorPeso && modoCargaManual === 'monto' ? (
+                  <InputNumber
+                    min={0.01}
+                    step={100}
+                    style={{ flex: 1 }}
+                    placeholder="Monto en $"
+                    prefix="$"
+                    value={montoManual}
+                    onChange={(v) => setMontoManual(v)}
+                    onPressEnter={handleAgregarManual}
+                  />
+                ) : (
+                  <InputNumber
+                    min={productoManualSeleccionado?.seVendePorPeso ? 0.001 : 1}
+                    step={productoManualSeleccionado?.seVendePorPeso ? 0.1 : 1}
+                    style={{ flex: 1 }}
+                    value={cantidadManual}
+                    onChange={(v) => setCantidadManual(v)}
+                    onPressEnter={handleAgregarManual}
+                  />
+                )}
+                <Button onClick={handleAgregarManual} disabled={!productoManualId}>
+                  Agregar
+                </Button>
+              </Flex>
+
+              {productoManualSeleccionado?.seVendePorPeso && modoCargaManual === 'monto' && (
+                <Typography.Text type="secondary">
+                  {cantidadPorMonto !== null
+                    ? `Equivale a ${cantidadPorMonto.toFixed(3)} kg`
+                    : 'Ingresá un monto para ver a cuántos kg equivale'}
+                </Typography.Text>
+              )}
             </Flex>
           </Card>
         </Col>
