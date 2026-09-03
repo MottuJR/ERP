@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Button, Card, Empty, Flex, InputNumber, Select, Space, Table, Typography, message } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, Divider, Empty, Flex, InputNumber, Select, Space, Table, Typography, message } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import axios from 'axios';
 import { AppLayout } from '../layout/AppLayout';
-import { listarProductos } from '../api/productos';
+import { actualizarProducto, listarProductos } from '../api/productos';
 import { listarInsumos } from '../api/inventario';
 import { actualizarReceta, crearReceta, obtenerReceta } from '../api/produccion';
 import { mensajeDeError } from '../api/client';
@@ -16,6 +16,8 @@ interface FilaReceta {
   cantidad: number;
 }
 
+const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+
 export function RecetasPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
@@ -26,6 +28,9 @@ export function RecetasPage() {
   const [recetaExiste, setRecetaExiste] = useState(false);
   const [cargandoReceta, setCargandoReceta] = useState(false);
   const [guardando, setGuardando] = useState(false);
+
+  const [margenDeseado, setMargenDeseado] = useState<number>(30);
+  const [aplicandoPrecio, setAplicandoPrecio] = useState(false);
 
   useEffect(() => {
     Promise.all([listarProductos(), listarInsumos()])
@@ -53,6 +58,59 @@ export function RecetasPage() {
       }
     } finally {
       setCargandoReceta(false);
+    }
+  }
+
+  const productoSeleccionado = productos.find((p) => p.id === productoId);
+
+  const costoUnitarioPorInsumo = useMemo(
+    () => new Map(insumos.map((i) => [i.id, i.costoUnitario])),
+    [insumos],
+  );
+
+  const costoTotal = useMemo(
+    () =>
+      filas.reduce((acc, fila) => {
+        if (fila.insumoId === undefined) return acc;
+        const costoUnitario = costoUnitarioPorInsumo.get(fila.insumoId) ?? 0;
+        return acc + costoUnitario * fila.cantidad;
+      }, 0),
+    [filas, costoUnitarioPorInsumo],
+  );
+
+  // Mismo criterio que ReportesService.margenPorProducto: margen = (precioVenta - costo) /
+  // precioVenta, o sea "qué porcentaje del precio final es ganancia" (no markup sobre costo).
+  const margenActual =
+    productoSeleccionado && productoSeleccionado.precioVenta > 0
+      ? ((productoSeleccionado.precioVenta - costoTotal) / productoSeleccionado.precioVenta) * 100
+      : null;
+
+  const precioSugerido =
+    costoTotal > 0 && margenDeseado < 100 ? costoTotal / (1 - margenDeseado / 100) : null;
+
+  async function handleAplicarPrecio() {
+    if (!productoSeleccionado || precioSugerido === null) return;
+
+    setAplicandoPrecio(true);
+    try {
+      const actualizado = await actualizarProducto(productoSeleccionado.id, {
+        nombre: productoSeleccionado.nombre,
+        categoriaId: productoSeleccionado.categoriaId,
+        tipo: productoSeleccionado.tipo,
+        seVendePorPeso: productoSeleccionado.seVendePorPeso,
+        precioVenta: Math.round(precioSugerido * 100) / 100,
+        unidadMedida: productoSeleccionado.unidadMedida,
+        codigoBarras: productoSeleccionado.codigoBarras,
+        codigoPLU: productoSeleccionado.codigoPLU,
+        stockMinimo: productoSeleccionado.stockMinimo,
+        activo: productoSeleccionado.activo,
+      });
+      setProductos((prev) => prev.map((p) => (p.id === actualizado.id ? actualizado : p)));
+      message.success(`Precio de venta actualizado a ${formatoMoneda.format(actualizado.precioVenta)}`);
+    } catch (err) {
+      message.error(mensajeDeError(err, 'No se pudo actualizar el precio de venta'));
+    } finally {
+      setAplicandoPrecio(false);
     }
   }
 
@@ -129,6 +187,15 @@ export function RecetasPage() {
       ),
     },
     {
+      title: 'Costo',
+      width: 140,
+      render: (_, fila) => {
+        if (fila.insumoId === undefined) return '—';
+        const costoUnitario = costoUnitarioPorInsumo.get(fila.insumoId) ?? 0;
+        return formatoMoneda.format(costoUnitario * fila.cantidad);
+      },
+    },
+    {
       title: '',
       width: 50,
       render: (_, fila) => (
@@ -176,6 +243,52 @@ export function RecetasPage() {
                   Guardar receta
                 </Button>
               </Flex>
+
+              {filas.some((f) => f.insumoId !== undefined) && (
+                <>
+                  <Divider style={{ margin: '8px 0' }} />
+
+                  <Flex justify="space-between" align="flex-start" wrap="wrap" gap={24}>
+                    <div>
+                      <Typography.Text type="secondary">Costo de insumos por unidad de producto</Typography.Text>
+                      <Typography.Title level={4} style={{ margin: '4px 0 0' }}>
+                        {formatoMoneda.format(costoTotal)}
+                      </Typography.Title>
+                      {productoSeleccionado && (
+                        <Typography.Text type="secondary">
+                          Precio de venta actual: {formatoMoneda.format(productoSeleccionado.precioVenta)}
+                          {margenActual !== null && ` (margen actual: ${margenActual.toFixed(1)}%)`}
+                        </Typography.Text>
+                      )}
+                    </div>
+
+                    <Flex vertical gap={4} align="flex-end">
+                      <Flex align="center" gap={8}>
+                        <Typography.Text>Margen deseado</Typography.Text>
+                        <InputNumber
+                          min={0}
+                          max={99}
+                          step={5}
+                          suffix="%"
+                          style={{ width: 100 }}
+                          value={margenDeseado}
+                          onChange={(v) => setMargenDeseado(v ?? 0)}
+                        />
+                      </Flex>
+                      <Typography.Text type="secondary">
+                        Precio sugerido: {precioSugerido !== null ? formatoMoneda.format(precioSugerido) : '—'}
+                      </Typography.Text>
+                      <Button
+                        onClick={handleAplicarPrecio}
+                        loading={aplicandoPrecio}
+                        disabled={precioSugerido === null}
+                      >
+                        Aplicar como precio de venta
+                      </Button>
+                    </Flex>
+                  </Flex>
+                </>
+              )}
             </>
           )}
         </Space>

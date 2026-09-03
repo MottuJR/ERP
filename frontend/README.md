@@ -32,6 +32,8 @@ Usuario de prueba (seed de desarrollo del backend): `admin@panaderia.local` / `c
   - "Confirmar venta" llama a `POST /api/ventas` con el `cajaId` de la caja actual, que descuenta stock en el backend. Atajo de teclado: `Ctrl+Enter` confirma la venta desde cualquier parte de la pantalla sin soltar el mouse.
 - **Productos** (`/productos`), **Insumos** (`/insumos`), **Clientes** (`/clientes`): alta/edición en un modal, mismo patrón que Proveedores. Productos permite además dar de baja (soft-delete) y crear una categoría nueva al vuelo desde el propio formulario.
 - **Recetas** (`/recetas`): elegís un producto elaborado, cargás/editás los ítems (insumo + cantidad por unidad de producto) y guardás contra `POST`/`PUT /api/produccion/recetas`.
+  - Por cada ítem muestra su costo (`costoUnitario` del insumo × cantidad) y el costo total de la receta — todo calculado en el cliente a partir de los insumos ya cargados, sin pedirle nada nuevo al backend.
+  - Con el precio de venta actual del producto calcula el margen actual (mismo criterio que `GET /api/reportes/margen-productos`: `(precioVenta - costo) / precioVenta`). Un campo de "margen deseado" sugiere el precio de venta que le correspondería a ese margen, y "Aplicar como precio de venta" lo guarda contra `PUT /api/productos/{id}`.
 - **Producción** (`/produccion`): elegís un producto con receta, ponés la cantidad a producir, ves una preview de cuánto insumo se va a consumir (calculada en el cliente a partir de la receta) y confirmás contra `POST /api/produccion/ordenes`.
 - **Proveedores** (`/proveedores`): alta/edición en un modal, contra `/api/proveedores`.
 - **Compras** (`/compras`): elegís proveedor, cargás ítems (insumo, cantidad, costo unitario) y confirmás contra `POST /api/compras`.
