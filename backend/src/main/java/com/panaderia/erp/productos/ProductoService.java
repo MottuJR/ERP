@@ -7,6 +7,7 @@ import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
 import com.panaderia.erp.core.exception.ValidacionNegocioException;
 import com.panaderia.erp.productos.dto.ActualizarProductoRequest;
 import com.panaderia.erp.productos.dto.CrearProductoRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -22,6 +23,9 @@ public class ProductoService {
     private final ProductoRepository productoRepository;
     private final CategoriaService categoriaService;
     private final AuditoriaService auditoriaService;
+
+    @Value("${app.stock.validar-disponibilidad:true}")
+    private boolean validarDisponibilidad;
 
     public ProductoService(ProductoRepository productoRepository, CategoriaService categoriaService,
                             AuditoriaService auditoriaService) {
@@ -135,7 +139,7 @@ public class ProductoService {
         Producto producto = obtenerPorId(productoId);
         BigDecimal nuevoStock = producto.getStockActual().add(delta);
 
-        if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+        if (validarDisponibilidad && nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
             throw new ConflictoException(
                     "Stock insuficiente para \"%s\": disponible %s, se intentó descontar %s"
                             .formatted(producto.getNombre(), producto.getStockActual(), delta.abs()));

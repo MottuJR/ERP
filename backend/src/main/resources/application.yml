@@ -13,3 +13,7 @@ spring:
 app:
   jwt:
     expiration-minutes: 60
+  stock:
+    # Poner en false para pruebas: permite que una venta o producción deje el stock en negativo
+    # en vez de rechazar la operación. Volver a true antes de producción.
+    validar-disponibilidad: false

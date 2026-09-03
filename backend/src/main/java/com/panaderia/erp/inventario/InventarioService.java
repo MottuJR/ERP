@@ -9,6 +9,7 @@ import com.panaderia.erp.inventario.dto.InsumoRequest;
 import com.panaderia.erp.inventario.dto.MovimientoManualRequest;
 import com.panaderia.erp.productos.Producto;
 import com.panaderia.erp.productos.ProductoService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,9 @@ public class InventarioService {
     private final MovimientoStockRepository movimientoStockRepository;
     private final ProductoService productoService;
     private final AuditoriaService auditoriaService;
+
+    @Value("${app.stock.validar-disponibilidad:true}")
+    private boolean validarDisponibilidad;
 
     public InventarioService(InsumoRepository insumoRepository,
                               MovimientoStockRepository movimientoStockRepository,
@@ -152,7 +156,7 @@ public class InventarioService {
         Insumo insumo = obtenerInsumoPorId(insumoId);
         BigDecimal nuevoStock = insumo.getStockActual().add(delta);
 
-        if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+        if (validarDisponibilidad && nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
             throw new ConflictoException(
                     "Stock insuficiente para el insumo \"%s\": disponible %s, se intentó descontar %s"
                             .formatted(insumo.getNombre(), insumo.getStockActual(), delta.abs()));
