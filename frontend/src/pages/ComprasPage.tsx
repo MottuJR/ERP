@@ -53,6 +53,16 @@ export function ComprasPage() {
     setFilas((prev) => prev.map((f) => (f.key === key ? { ...f, ...cambios } : f)));
   }
 
+  const costoActualPorInsumo = useMemo(() => new Map(insumos.map((i) => [i.id, i.costoUnitario])), [insumos]);
+
+  // Al elegir el insumo, precarga el costo unitario con el que ya tenemos guardado — así el
+  // que carga la compra ve de entrada cuánto pagábamos antes y solo tiene que pisarlo si el
+  // nuevo precio cambió, en vez de escribirlo de cero sin poder comparar.
+  function handleElegirInsumo(key: string, insumoId: number) {
+    const costoActual = costoActualPorInsumo.get(insumoId) ?? null;
+    actualizarFila(key, { insumoId, costoUnitario: costoActual });
+  }
+
   async function handleConfirmar() {
     if (!proveedorId) {
       message.warning('Elegí un proveedor');
@@ -96,7 +106,7 @@ export function ComprasPage() {
           placeholder="Insumo"
           style={{ width: '100%' }}
           value={fila.insumoId}
-          onChange={(v) => actualizarFila(fila.key, { insumoId: v })}
+          onChange={(v) => handleElegirInsumo(fila.key, v)}
           optionFilterProp="label"
           options={insumos.map((i) => ({ value: i.id, label: `${i.nombre} (${i.unidadMedida})` }))}
         />
@@ -118,15 +128,25 @@ export function ComprasPage() {
     {
       title: 'Costo unitario',
       width: 160,
-      render: (_, fila) => (
-        <InputNumber
-          min={0.01}
-          step={10}
-          style={{ width: '100%' }}
-          value={fila.costoUnitario}
-          onChange={(v) => actualizarFila(fila.key, { costoUnitario: v })}
-        />
-      ),
+      render: (_, fila) => {
+        const costoActual = fila.insumoId !== undefined ? costoActualPorInsumo.get(fila.insumoId) : undefined;
+        return (
+          <>
+            <InputNumber
+              min={0.01}
+              step={10}
+              style={{ width: '100%' }}
+              value={fila.costoUnitario}
+              onChange={(v) => actualizarFila(fila.key, { costoUnitario: v })}
+            />
+            {costoActual !== undefined && (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                Antes: {formatoMoneda.format(costoActual)}
+              </Typography.Text>
+            )}
+          </>
+        );
+      },
     },
     {
       title: 'Subtotal',
