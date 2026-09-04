@@ -7,6 +7,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Popconfirm,
   Select,
   Switch,
   Table,
@@ -183,9 +184,18 @@ export function ProductosPage() {
         <>
           <Button type="text" icon={<EditOutlined />} onClick={() => abrirEdicion(producto)} />
           {producto.activo && (
-            <Button type="text" danger onClick={() => handleDesactivar(producto)}>
-              Dar de baja
-            </Button>
+            <Popconfirm
+              title={`¿Dar de baja "${producto.nombre}"?`}
+              description="Deja de aparecer para vender, pero se puede reactivar después desde Editar."
+              okText="Dar de baja"
+              okButtonProps={{ danger: true }}
+              cancelText="Cancelar"
+              onConfirm={() => handleDesactivar(producto)}
+            >
+              <Button type="text" danger>
+                Dar de baja
+              </Button>
+            </Popconfirm>
           )}
         </>
       ),
