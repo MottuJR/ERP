@@ -34,14 +34,27 @@ public class PagoCliente {
     @Column(name = "medio_pago", nullable = false, length = 20)
     private MedioPago medioPago;
 
+    /**
+     * Turno en el que se cobró (null si no había ninguna caja abierta al momento del pago). Se
+     * usa para que el cobro entre en la contabilidad de efectivo del turno y en la comisión de
+     * quien lo cobró, igual que una venta.
+     */
+    @Column(name = "caja_id")
+    private Long cajaId;
+
+    @Column(name = "usuario_id")
+    private Long usuarioId;
+
     protected PagoCliente() {
     }
 
-    public PagoCliente(Long clienteId, BigDecimal monto, MedioPago medioPago) {
+    public PagoCliente(Long clienteId, BigDecimal monto, MedioPago medioPago, Long cajaId, Long usuarioId) {
         this.clienteId = clienteId;
         this.fecha = Instant.now();
         this.monto = monto;
         this.medioPago = medioPago;
+        this.cajaId = cajaId;
+        this.usuarioId = usuarioId;
     }
 
     public Long getId() {
@@ -62,5 +75,13 @@ public class PagoCliente {
 
     public MedioPago getMedioPago() {
         return medioPago;
+    }
+
+    public Long getCajaId() {
+        return cajaId;
+    }
+
+    public Long getUsuarioId() {
+        return usuarioId;
     }
 }

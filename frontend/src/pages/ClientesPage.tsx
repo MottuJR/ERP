@@ -165,8 +165,12 @@ export function ClientesPage() {
 
     setRegistrandoPago(true);
     try {
-      await registrarPagoCliente(clienteCuenta.id, montoPago, medioPagoPago);
-      message.success('Pago registrado');
+      const pago = await registrarPagoCliente(clienteCuenta.id, montoPago, medioPagoPago);
+      if (pago.cajaId === null) {
+        message.warning('Pago registrado, pero no hay ninguna caja abierta: no se va a contar en las comisiones de ningún turno.');
+      } else {
+        message.success('Pago registrado');
+      }
       setMontoPago(null);
       cargarCuenta(clienteCuenta.id);
       cargarClientes();

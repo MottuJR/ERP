@@ -41,6 +41,11 @@ export function ComisionesPage() {
       render: (valor: number) => formatoMoneda.format(valor),
     },
     {
+      title: 'Cobros de cuenta corriente',
+      dataIndex: 'totalCobrado',
+      render: (valor: number) => formatoMoneda.format(valor),
+    },
+    {
       title: 'Porcentaje',
       dataIndex: 'porcentaje',
       render: (valor: number | null) => (valor === null ? 'Sin asignar' : `${valor}%`),
@@ -103,7 +108,7 @@ export function ComisionesPage() {
                   rowKey={(row) => `${row.cajaId}-${row.usuarioId}`}
                   loading={cargando}
                   pagination={false}
-                  locale={{ emptyText: 'Sin ventas con caja asignada en este período' }}
+                  locale={{ emptyText: 'Sin ventas ni cobros con caja asignada en este período' }}
                 />
               ),
             },

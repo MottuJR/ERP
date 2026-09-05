@@ -1,5 +1,7 @@
 package com.panaderia.erp.comisiones;
 
+import com.panaderia.erp.clientes.CuentaCorrienteService;
+import com.panaderia.erp.clientes.dto.PagoTurnoResumen;
 import com.panaderia.erp.comisiones.dto.ComisionProduccionResponse;
 import com.panaderia.erp.comisiones.dto.ComisionVendedorResponse;
 import com.panaderia.erp.core.usuario.Rol;
@@ -36,6 +38,9 @@ class ComisionesServiceTest {
     private VentaService ventaService;
 
     @Mock
+    private CuentaCorrienteService cuentaCorrienteService;
+
+    @Mock
     private OrdenProduccionService ordenProduccionService;
 
     @Mock
@@ -63,6 +68,7 @@ class ComisionesServiceTest {
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(vendedora));
         when(ventaService.totalVendidoPorTurnoYUsuario(DESDE, HASTA))
                 .thenReturn(List.of(new VentaTurnoResumen(10L, 1L, new BigDecimal("2000.00"))));
+        when(cuentaCorrienteService.totalPagadoPorTurnoYUsuario(DESDE, HASTA)).thenReturn(List.of());
 
         List<ComisionVendedorResponse> comisiones = comisionesService.comisionesVendedores(DESDE, HASTA);
 
@@ -80,6 +86,7 @@ class ComisionesServiceTest {
         when(usuarioRepository.findById(2L)).thenReturn(Optional.of(vendedor));
         when(ventaService.totalVendidoPorTurnoYUsuario(DESDE, HASTA))
                 .thenReturn(List.of(new VentaTurnoResumen(11L, 2L, new BigDecimal("5000.00"))));
+        when(cuentaCorrienteService.totalPagadoPorTurnoYUsuario(DESDE, HASTA)).thenReturn(List.of());
 
         List<ComisionVendedorResponse> comisiones = comisionesService.comisionesVendedores(DESDE, HASTA);
 
@@ -95,12 +102,48 @@ class ComisionesServiceTest {
                 .thenReturn(List.of(
                         new VentaTurnoResumen(10L, 1L, new BigDecimal("1000.00")),
                         new VentaTurnoResumen(20L, 1L, new BigDecimal("3000.00"))));
+        when(cuentaCorrienteService.totalPagadoPorTurnoYUsuario(DESDE, HASTA)).thenReturn(List.of());
 
         List<ComisionVendedorResponse> comisiones = comisionesService.comisionesVendedores(DESDE, HASTA);
 
         assertThat(comisiones).hasSize(2);
         assertThat(comisiones.get(0).comision()).isEqualByComparingTo("100.00");
         assertThat(comisiones.get(1).comision()).isEqualByComparingTo("300.00");
+    }
+
+    @Test
+    void unCobroDeCuentaCorrienteSumaALaComisionJuntoConLoVendido() {
+        Usuario vendedora = usuarioConComision(1L, "Vendedora", "10.00");
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(vendedora));
+        when(ventaService.totalVendidoPorTurnoYUsuario(DESDE, HASTA))
+                .thenReturn(List.of(new VentaTurnoResumen(10L, 1L, new BigDecimal("1000.00"))));
+        when(cuentaCorrienteService.totalPagadoPorTurnoYUsuario(DESDE, HASTA))
+                .thenReturn(List.of(new PagoTurnoResumen(10L, 1L, new BigDecimal("500.00"))));
+
+        List<ComisionVendedorResponse> comisiones = comisionesService.comisionesVendedores(DESDE, HASTA);
+
+        assertThat(comisiones).hasSize(1);
+        ComisionVendedorResponse comision = comisiones.get(0);
+        assertThat(comision.totalVendido()).isEqualByComparingTo("1000.00");
+        assertThat(comision.totalCobrado()).isEqualByComparingTo("500.00");
+        // (1000.00 + 500.00) * 10% = 150.00
+        assertThat(comision.comision()).isEqualByComparingTo("150.00");
+    }
+
+    @Test
+    void unTurnoConSoloCobrosYSinVentasTambienGeneraComision() {
+        Usuario vendedora = usuarioConComision(1L, "Vendedora", "10.00");
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(vendedora));
+        when(ventaService.totalVendidoPorTurnoYUsuario(DESDE, HASTA)).thenReturn(List.of());
+        when(cuentaCorrienteService.totalPagadoPorTurnoYUsuario(DESDE, HASTA))
+                .thenReturn(List.of(new PagoTurnoResumen(10L, 1L, new BigDecimal("500.00"))));
+
+        List<ComisionVendedorResponse> comisiones = comisionesService.comisionesVendedores(DESDE, HASTA);
+
+        assertThat(comisiones).hasSize(1);
+        assertThat(comisiones.get(0).totalVendido()).isEqualByComparingTo("0");
+        assertThat(comisiones.get(0).totalCobrado()).isEqualByComparingTo("500.00");
+        assertThat(comisiones.get(0).comision()).isEqualByComparingTo("50.00");
     }
 
     @Test

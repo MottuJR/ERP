@@ -11,11 +11,13 @@ public record PagoClienteResponse(
         Long clienteId,
         Instant fecha,
         BigDecimal monto,
-        MedioPago medioPago
+        MedioPago medioPago,
+        Long cajaId
 ) {
 
     public static PagoClienteResponse from(PagoCliente pago) {
         return new PagoClienteResponse(
-                pago.getId(), pago.getClienteId(), pago.getFecha(), pago.getMonto(), pago.getMedioPago());
+                pago.getId(), pago.getClienteId(), pago.getFecha(), pago.getMonto(), pago.getMedioPago(),
+                pago.getCajaId());
     }
 }

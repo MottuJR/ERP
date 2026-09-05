@@ -1,9 +1,15 @@
 package com.panaderia.erp.clientes;
 
+import com.panaderia.erp.caja.Caja;
+import com.panaderia.erp.caja.CajaRepository;
+import com.panaderia.erp.caja.EstadoCaja;
 import com.panaderia.erp.clientes.dto.PagoClienteRequest;
 import com.panaderia.erp.clientes.dto.SaldoClienteResponse;
 import com.panaderia.erp.core.auditoria.AuditoriaService;
 import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
+import com.panaderia.erp.core.usuario.Rol;
+import com.panaderia.erp.core.usuario.Usuario;
+import com.panaderia.erp.core.usuario.UsuarioRepository;
 import com.panaderia.erp.ventas.MedioPago;
 import com.panaderia.erp.ventas.VentaService;
 import org.junit.jupiter.api.Test;
@@ -14,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,6 +43,12 @@ class CuentaCorrienteServiceTest {
 
     @Mock
     private AuditoriaService auditoriaService;
+
+    @Mock
+    private CajaRepository cajaRepository;
+
+    @Mock
+    private UsuarioRepository usuarioRepository;
 
     @InjectMocks
     private CuentaCorrienteService cuentaCorrienteService;
@@ -88,7 +101,12 @@ class CuentaCorrienteServiceTest {
     @Test
     void registrarPagoLoGuardaConElClienteYMedioIndicados() {
         Cliente cliente = cliente(1L, "Juan Pérez");
+        Usuario vendedor = new Usuario("Vendedora", "vendedor@panaderia.local", "hash", Rol.VENDEDOR);
+        ReflectionTestUtils.setField(vendedor, "id", 7L);
+
         when(clienteService.obtenerPorId(1L)).thenReturn(cliente);
+        when(usuarioRepository.findByEmail("vendedor@panaderia.local")).thenReturn(Optional.of(vendedor));
+        when(cajaRepository.findFirstByEstado(EstadoCaja.ABIERTA)).thenReturn(Optional.empty());
         when(pagoClienteRepository.save(any(PagoCliente.class))).thenAnswer(inv -> inv.getArgument(0));
 
         PagoClienteRequest request = new PagoClienteRequest(new BigDecimal("1500.00"), MedioPago.EFECTIVO);
@@ -97,5 +115,27 @@ class CuentaCorrienteServiceTest {
         assertThat(pago.getClienteId()).isEqualTo(1L);
         assertThat(pago.getMonto()).isEqualByComparingTo("1500.00");
         assertThat(pago.getMedioPago()).isEqualTo(MedioPago.EFECTIVO);
+        assertThat(pago.getUsuarioId()).isEqualTo(7L);
+        assertThat(pago.getCajaId()).isNull();
+    }
+
+    @Test
+    void registrarPagoConCajaAbiertaLoAtaAEseTurno() {
+        Cliente cliente = cliente(1L, "Juan Pérez");
+        Usuario vendedor = new Usuario("Vendedora", "vendedor@panaderia.local", "hash", Rol.VENDEDOR);
+        ReflectionTestUtils.setField(vendedor, "id", 7L);
+        Caja caja = new Caja(new BigDecimal("1000.00"), 7L);
+        ReflectionTestUtils.setField(caja, "id", 3L);
+
+        when(clienteService.obtenerPorId(1L)).thenReturn(cliente);
+        when(usuarioRepository.findByEmail("vendedor@panaderia.local")).thenReturn(Optional.of(vendedor));
+        when(cajaRepository.findFirstByEstado(EstadoCaja.ABIERTA)).thenReturn(Optional.of(caja));
+        when(pagoClienteRepository.save(any(PagoCliente.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PagoClienteRequest request = new PagoClienteRequest(new BigDecimal("500.00"), MedioPago.EFECTIVO);
+        PagoCliente pago = cuentaCorrienteService.registrarPago(1L, request, "vendedor@panaderia.local");
+
+        assertThat(pago.getCajaId()).isEqualTo(3L);
+        assertThat(pago.getUsuarioId()).isEqualTo(7L);
     }
 }

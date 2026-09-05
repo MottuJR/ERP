@@ -7,6 +7,7 @@ public record ComisionVendedorResponse(
         Long usuarioId,
         String usuarioNombre,
         BigDecimal totalVendido,
+        BigDecimal totalCobrado,
         BigDecimal porcentaje,
         BigDecimal comision
 ) {

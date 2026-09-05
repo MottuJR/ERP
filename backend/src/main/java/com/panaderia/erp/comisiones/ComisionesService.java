@@ -1,5 +1,7 @@
 package com.panaderia.erp.comisiones;
 
+import com.panaderia.erp.clientes.CuentaCorrienteService;
+import com.panaderia.erp.clientes.dto.PagoTurnoResumen;
 import com.panaderia.erp.comisiones.dto.ComisionProduccionResponse;
 import com.panaderia.erp.comisiones.dto.ComisionVendedorResponse;
 import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
@@ -16,7 +18,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Calcula comisiones on-demand (sección 7 del documento de diseño): no se persisten como
@@ -29,25 +33,48 @@ public class ComisionesService {
     private static final BigDecimal CIEN = BigDecimal.valueOf(100);
 
     private final VentaService ventaService;
+    private final CuentaCorrienteService cuentaCorrienteService;
     private final OrdenProduccionService ordenProduccionService;
     private final UsuarioRepository usuarioRepository;
     private final ProductoService productoService;
 
-    public ComisionesService(VentaService ventaService, OrdenProduccionService ordenProduccionService,
-                              UsuarioRepository usuarioRepository, ProductoService productoService) {
+    public ComisionesService(VentaService ventaService, CuentaCorrienteService cuentaCorrienteService,
+                              OrdenProduccionService ordenProduccionService, UsuarioRepository usuarioRepository,
+                              ProductoService productoService) {
         this.ventaService = ventaService;
+        this.cuentaCorrienteService = cuentaCorrienteService;
         this.ordenProduccionService = ordenProduccionService;
         this.usuarioRepository = usuarioRepository;
         this.productoService = productoService;
     }
 
     /**
-     * Por cada turno (Caja) y vendedor: comisión = total vendido por ese vendedor en ese turno
-     * × su porcentaje de comisión.
+     * Por cada turno (Caja) y vendedor: comisión = (total vendido + total cobrado de cuenta
+     * corriente) por ese vendedor en ese turno × su porcentaje de comisión. Cobrar una deuda de
+     * cuenta corriente cuenta para la comisión igual que una venta — es la misma gestión con el
+     * cliente en el mostrador.
      */
     public List<ComisionVendedorResponse> comisionesVendedores(Instant desde, Instant hasta) {
-        return ventaService.totalVendidoPorTurnoYUsuario(desde, hasta).stream()
-                .map(this::aComisionVendedor)
+        record Turno(Long cajaId, Long usuarioId) {
+        }
+
+        Map<Turno, BigDecimal> totalVendido = new LinkedHashMap<>();
+        Map<Turno, BigDecimal> totalCobrado = new LinkedHashMap<>();
+
+        for (VentaTurnoResumen r : ventaService.totalVendidoPorTurnoYUsuario(desde, hasta)) {
+            totalVendido.merge(new Turno(r.cajaId(), r.usuarioId()), r.totalVendido(), BigDecimal::add);
+        }
+        for (PagoTurnoResumen r : cuentaCorrienteService.totalPagadoPorTurnoYUsuario(desde, hasta)) {
+            totalCobrado.merge(new Turno(r.cajaId(), r.usuarioId()), r.totalPagado(), BigDecimal::add);
+        }
+
+        Map<Turno, BigDecimal> turnos = new LinkedHashMap<>(totalVendido);
+        totalCobrado.keySet().forEach(t -> turnos.putIfAbsent(t, BigDecimal.ZERO));
+
+        return turnos.keySet().stream()
+                .map(t -> aComisionVendedor(t.cajaId(), t.usuarioId(),
+                        totalVendido.getOrDefault(t, BigDecimal.ZERO),
+                        totalCobrado.getOrDefault(t, BigDecimal.ZERO)))
                 .toList();
     }
 
@@ -61,12 +88,14 @@ public class ComisionesService {
                 .toList();
     }
 
-    private ComisionVendedorResponse aComisionVendedor(VentaTurnoResumen resumen) {
-        Usuario usuario = obtenerUsuario(resumen.usuarioId());
-        BigDecimal comision = calcularComision(resumen.totalVendido(), usuario.getPorcentajeComision());
+    private ComisionVendedorResponse aComisionVendedor(Long cajaId, Long usuarioId, BigDecimal totalVendido,
+                                                        BigDecimal totalCobrado) {
+        Usuario usuario = obtenerUsuario(usuarioId);
+        BigDecimal base = totalVendido.add(totalCobrado);
+        BigDecimal comision = calcularComision(base, usuario.getPorcentajeComision());
 
         return new ComisionVendedorResponse(
-                resumen.cajaId(), usuario.getId(), usuario.getNombre(), resumen.totalVendido(),
+                cajaId, usuario.getId(), usuario.getNombre(), totalVendido, totalCobrado,
                 usuario.getPorcentajeComision(), comision);
     }
 

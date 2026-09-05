@@ -95,6 +95,14 @@ export function HistorialCajasPage() {
     { title: 'Total', dataIndex: 'total', render: (v: number) => formatoMoneda.format(v) },
   ];
 
+  const columnasCobros: ColumnsType<CajaResumen['cobros'][number]> = [
+    { title: 'Hora', dataIndex: 'fecha', render: (f: string) => new Date(f).toLocaleString('es-AR') },
+    { title: 'Cobrado por', dataIndex: 'usuarioNombre' },
+    { title: 'Cliente', dataIndex: 'clienteNombre' },
+    { title: 'Medio de pago', dataIndex: 'medioPago', render: etiquetaMedioPago },
+    { title: 'Monto', dataIndex: 'monto', render: (v: number) => formatoMoneda.format(v) },
+  ];
+
   return (
     <AppLayout>
       <Card title="Historial de cajas">
@@ -139,6 +147,21 @@ export function HistorialCajasPage() {
               style={{ marginBottom: 16 }}
             />
 
+            {resumen.cobros.length > 0 && (
+              <>
+                <Typography.Title level={5}>Cobros de cuenta corriente</Typography.Title>
+                <Table
+                  columns={columnasCobros}
+                  dataSource={resumen.cobros}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  scroll={{ y: 240 }}
+                  style={{ marginBottom: 16 }}
+                />
+              </>
+            )}
+
             <Typography.Title level={5}>Resumen por medio de pago</Typography.Title>
             <Table
               columns={columnasMedioPago}
@@ -152,6 +175,8 @@ export function HistorialCajasPage() {
 
             <Typography.Paragraph>
               <strong>Total vendido:</strong> {formatoMoneda.format(resumen.totalVentas)}
+              <br />
+              <strong>Total cobrado (cuenta corriente):</strong> {formatoMoneda.format(resumen.totalCobros)}
               <br />
               <strong>Ingresos manuales:</strong> {formatoMoneda.format(resumen.totalIngresos)}
               <br />
