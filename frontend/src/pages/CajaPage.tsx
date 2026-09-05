@@ -177,6 +177,7 @@ export function CajaPage() {
           style={{ width: '100%', marginTop: 8 }}
           value={montoInicial}
           onChange={(v) => setMontoInicial(v)}
+          onPressEnter={handleAbrir}
           autoFocus
         />
       </Modal>
@@ -195,6 +196,7 @@ export function CajaPage() {
           style={{ width: '100%', marginTop: 8 }}
           value={montoFinal}
           onChange={(v) => setMontoFinal(v)}
+          onPressEnter={handleCerrar}
           autoFocus
         />
       </Modal>
