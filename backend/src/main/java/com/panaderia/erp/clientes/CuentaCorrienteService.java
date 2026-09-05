@@ -2,13 +2,16 @@ package com.panaderia.erp.clientes;
 
 import com.panaderia.erp.clientes.dto.PagoClienteRequest;
 import com.panaderia.erp.clientes.dto.SaldoClienteResponse;
+import com.panaderia.erp.clientes.dto.VentaClienteResponse;
 import com.panaderia.erp.core.auditoria.AccionAuditoria;
 import com.panaderia.erp.core.auditoria.AuditoriaService;
+import com.panaderia.erp.ventas.Venta;
 import com.panaderia.erp.ventas.VentaService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -46,6 +49,20 @@ public class CuentaCorrienteService {
                 "Pago de %s (%s) de \"%s\"".formatted(request.monto(), request.medioPago(), cliente.getNombre()));
 
         return pago;
+    }
+
+    /**
+     * Compras (ventas) de un cliente en un período, de la más reciente a la más vieja.
+     */
+    public List<VentaClienteResponse> listarVentas(Long clienteId, Instant desde, Instant hasta) {
+        clienteService.obtenerPorId(clienteId);
+        return ventaService.listarPorClienteEntrePeriodo(clienteId, desde, hasta).stream()
+                .map(this::aVentaClienteResponse)
+                .toList();
+    }
+
+    private VentaClienteResponse aVentaClienteResponse(Venta venta) {
+        return new VentaClienteResponse(venta.getId(), venta.getFecha(), venta.getTotal(), venta.getMedioPago());
     }
 
     public SaldoClienteResponse consultarSaldo(Long clienteId) {

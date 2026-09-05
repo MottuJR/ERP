@@ -129,6 +129,14 @@ public class VentaService {
     }
 
     /**
+     * Ventas confirmadas de un cliente en un período, de la más reciente a la más vieja. La usa
+     * el módulo de clientes para mostrar el historial de compras en la ficha de cuenta corriente.
+     */
+    public List<Venta> listarPorClienteEntrePeriodo(Long clienteId, Instant desde, Instant hasta) {
+        return ventaRepository.findByClienteIdAndFechaBetweenOrderByFechaDesc(clienteId, desde, hasta);
+    }
+
+    /**
      * Total vendido por cada (turno, vendedor) en un período — solo ventas con caja asignada.
      * La usa el módulo de comisiones para calcular la comisión de vendedores.
      */

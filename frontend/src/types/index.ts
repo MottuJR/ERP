@@ -249,6 +249,13 @@ export interface SaldoCliente {
   saldo: number;
 }
 
+export interface VentaCliente {
+  id: number;
+  fecha: string;
+  total: number;
+  medioPago: MedioPago;
+}
+
 export interface ComisionVendedor {
   cajaId: number;
   usuarioId: number;

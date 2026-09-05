@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Cliente, MedioPago, PagoCliente, SaldoCliente } from '../types';
+import type { Cliente, MedioPago, PagoCliente, SaldoCliente, VentaCliente } from '../types';
 
 export interface ClientePayload {
   nombre: string;
@@ -38,5 +38,10 @@ export async function registrarPagoCliente(
   medioPago: MedioPago,
 ): Promise<PagoCliente> {
   const { data } = await apiClient.post<PagoCliente>(`/api/clientes/${id}/pagos`, { monto, medioPago });
+  return data;
+}
+
+export async function listarVentasCliente(id: number, desde: string, hasta: string): Promise<VentaCliente[]> {
+  const { data } = await apiClient.get<VentaCliente[]>(`/api/clientes/${id}/ventas`, { params: { desde, hasta } });
   return data;
 }

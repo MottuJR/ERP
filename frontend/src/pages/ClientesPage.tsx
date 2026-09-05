@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Card,
+  DatePicker,
   Flex,
   Form,
   Input,
@@ -16,22 +17,25 @@ import {
 } from 'antd';
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import dayjs, { type Dayjs } from 'dayjs';
 import { AppLayout } from '../layout/AppLayout';
 import {
   actualizarCliente,
   crearCliente,
   listarClientes,
   listarPagosCliente,
+  listarVentasCliente,
   obtenerSaldoCliente,
   registrarPagoCliente,
   type ClientePayload,
 } from '../api/clientes';
 import { mensajeDeError } from '../api/client';
 import { MEDIOS_PAGO } from '../types';
-import type { Cliente, MedioPago, PagoCliente, SaldoCliente } from '../types';
+import type { Cliente, MedioPago, PagoCliente, SaldoCliente, VentaCliente } from '../types';
 
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 const MEDIOS_PAGO_CUENTA = MEDIOS_PAGO.filter((m) => m.value !== 'CUENTA_CORRIENTE');
+const FORMATO_FECHA = 'YYYY-MM-DD';
 
 export function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -52,6 +56,10 @@ export function ClientesPage() {
   const [montoPago, setMontoPago] = useState<number | null>(null);
   const [medioPagoPago, setMedioPagoPago] = useState<MedioPago>('EFECTIVO');
   const [registrandoPago, setRegistrandoPago] = useState(false);
+
+  const [rangoCompras, setRangoCompras] = useState<[Dayjs, Dayjs]>([dayjs().subtract(30, 'day'), dayjs()]);
+  const [compras, setCompras] = useState<VentaCliente[]>([]);
+  const [cargandoCompras, setCargandoCompras] = useState(false);
 
   function cargarClientes() {
     setCargando(true);
@@ -124,6 +132,7 @@ export function ClientesPage() {
     setCuentaAbierta(true);
     setMontoPago(null);
     setMedioPagoPago('EFECTIVO');
+    setRangoCompras([dayjs().subtract(30, 'day'), dayjs()]);
     cargarCuenta(cliente.id);
   }
 
@@ -137,6 +146,16 @@ export function ClientesPage() {
       .catch((err) => message.error(mensajeDeError(err, 'No se pudo cargar la cuenta corriente')))
       .finally(() => setCargandoCuenta(false));
   }
+
+  useEffect(() => {
+    if (!cuentaAbierta || !clienteCuenta) return;
+    const [desde, hasta] = rangoCompras;
+    setCargandoCompras(true);
+    listarVentasCliente(clienteCuenta.id, desde.format(FORMATO_FECHA), hasta.format(FORMATO_FECHA))
+      .then(setCompras)
+      .catch((err) => message.error(mensajeDeError(err, 'No se pudieron cargar las compras')))
+      .finally(() => setCargandoCompras(false));
+  }, [cuentaAbierta, clienteCuenta, rangoCompras]);
 
   async function handleRegistrarPago() {
     if (!clienteCuenta || !montoPago || montoPago <= 0) {
@@ -191,6 +210,12 @@ export function ClientesPage() {
         </Flex>
       ),
     },
+  ];
+
+  const columnasCompras: ColumnsType<VentaCliente> = [
+    { title: 'Fecha', dataIndex: 'fecha', render: (f: string) => new Date(f).toLocaleString('es-AR') },
+    { title: 'Medio de pago', dataIndex: 'medioPago', render: (m: string) => MEDIOS_PAGO.find((mp) => mp.value === m)?.label ?? m },
+    { title: 'Total', dataIndex: 'total', render: (v: number) => formatoMoneda.format(v) },
   ];
 
   const columnasPagos: ColumnsType<PagoCliente> = [
@@ -253,7 +278,7 @@ export function ClientesPage() {
         open={cuentaAbierta}
         onCancel={() => setCuentaAbierta(false)}
         footer={null}
-        width={600}
+        width={700}
       >
         {saldoCuenta && (
           <Typography.Paragraph>
@@ -268,6 +293,33 @@ export function ClientesPage() {
             </Typography.Text>
           </Typography.Paragraph>
         )}
+
+        <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+          <Typography.Title level={5} style={{ margin: 0 }}>
+            Compras
+          </Typography.Title>
+          <DatePicker.RangePicker
+            value={rangoCompras}
+            format="DD/MM/YYYY"
+            allowClear={false}
+            onChange={(valores) => {
+              if (valores && valores[0] && valores[1]) {
+                setRangoCompras([valores[0], valores[1]]);
+              }
+            }}
+          />
+        </Flex>
+        <Table
+          columns={columnasCompras}
+          dataSource={compras}
+          rowKey="id"
+          pagination={false}
+          size="small"
+          loading={cargandoCompras}
+          scroll={{ y: 240 }}
+          locale={{ emptyText: 'Sin compras en el período elegido' }}
+          style={{ marginBottom: 16 }}
+        />
 
         <Typography.Title level={5}>Historial de pagos</Typography.Title>
         <Table

@@ -5,7 +5,10 @@ import com.panaderia.erp.clientes.dto.ClienteResponse;
 import com.panaderia.erp.clientes.dto.PagoClienteRequest;
 import com.panaderia.erp.clientes.dto.PagoClienteResponse;
 import com.panaderia.erp.clientes.dto.SaldoClienteResponse;
+import com.panaderia.erp.clientes.dto.VentaClienteResponse;
+import com.panaderia.erp.core.util.RangoFechas;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,8 +20,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -79,6 +84,14 @@ public class ClienteController {
         return cuentaCorrienteService.listarPagos(id).stream()
                 .map(PagoClienteResponse::from)
                 .toList();
+    }
+
+    @GetMapping("/{id}/ventas")
+    public List<VentaClienteResponse> listarVentas(
+            @PathVariable Long id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return cuentaCorrienteService.listarVentas(id, RangoFechas.inicioDelDia(desde), RangoFechas.finDelDia(hasta));
     }
 
     // También lo puede hacer VENDEDOR: si un cliente quiere saldar su cuenta corriente en el
