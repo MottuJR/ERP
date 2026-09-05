@@ -12,6 +12,8 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
 
     List<Venta> findByFechaBetween(Instant desde, Instant hasta);
 
+    List<Venta> findByCajaIdOrderByFechaDesc(Long cajaId);
+
     @Query("""
             select coalesce(sum(v.total), 0)
             from Venta v

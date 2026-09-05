@@ -99,6 +99,15 @@ export interface VentaPorMedioPago {
   cantidad: number;
 }
 
+export interface VentaResumenCaja {
+  id: number;
+  fecha: string;
+  medioPago: MedioPago;
+  total: number;
+  usuarioNombre: string;
+  clienteNombre: string | null;
+}
+
 export interface CajaResumen {
   id: number;
   fechaApertura: string;
@@ -114,6 +123,7 @@ export interface CajaResumen {
   totalEgresos: number;
   efectivoEsperado: number;
   diferencia: number | null;
+  ventas: VentaResumenCaja[];
 }
 
 export interface EscaneoResponse {

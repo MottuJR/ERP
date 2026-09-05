@@ -3,6 +3,8 @@ package com.panaderia.erp.caja;
 import com.panaderia.erp.caja.dto.CajaHistorialResponse;
 import com.panaderia.erp.caja.dto.CajaResumenResponse;
 import com.panaderia.erp.caja.dto.VentaPorMedioPagoDTO;
+import com.panaderia.erp.caja.dto.VentaResumenCajaResponse;
+import com.panaderia.erp.clientes.ClienteService;
 import com.panaderia.erp.core.auditoria.AccionAuditoria;
 import com.panaderia.erp.core.auditoria.AuditoriaService;
 import com.panaderia.erp.core.exception.ConflictoException;
@@ -11,6 +13,7 @@ import com.panaderia.erp.core.exception.ValidacionNegocioException;
 import com.panaderia.erp.core.usuario.Usuario;
 import com.panaderia.erp.core.usuario.UsuarioRepository;
 import com.panaderia.erp.ventas.MedioPago;
+import com.panaderia.erp.ventas.Venta;
 import com.panaderia.erp.ventas.VentaService;
 import com.panaderia.erp.ventas.dto.VentaPorMedioPagoResumen;
 import org.springframework.stereotype.Service;
@@ -30,17 +33,20 @@ public class CajaService {
     private final UsuarioRepository usuarioRepository;
     private final AuditoriaService auditoriaService;
     private final VentaService ventaService;
+    private final ClienteService clienteService;
 
     public CajaService(CajaRepository cajaRepository,
                         MovimientoCajaRepository movimientoCajaRepository,
                         UsuarioRepository usuarioRepository,
                         AuditoriaService auditoriaService,
-                        VentaService ventaService) {
+                        VentaService ventaService,
+                        ClienteService clienteService) {
         this.cajaRepository = cajaRepository;
         this.movimientoCajaRepository = movimientoCajaRepository;
         this.usuarioRepository = usuarioRepository;
         this.auditoriaService = auditoriaService;
         this.ventaService = ventaService;
+        this.clienteService = clienteService;
     }
 
     public Caja obtenerPorId(Long id) {
@@ -98,11 +104,25 @@ public class CajaService {
         BigDecimal efectivoEsperado = caja.getMontoInicial().add(totalEfectivo).add(totalIngresos).subtract(totalEgresos);
         BigDecimal diferencia = caja.getMontoFinal() != null ? caja.getMontoFinal().subtract(efectivoEsperado) : null;
 
+        List<VentaResumenCajaResponse> ventas = ventaService.listarPorCaja(cajaId).stream()
+                .map(this::aVentaResumenCaja)
+                .toList();
+
         return new CajaResumenResponse(
                 caja.getId(), caja.getFechaApertura(), caja.getFechaCierre(),
                 caja.getMontoInicial(), caja.getMontoFinal(), caja.getUsuarioId(), usuarioNombre, caja.getEstado(),
                 ventasPorMedio.stream().map(VentaPorMedioPagoDTO::from).toList(),
-                totalVentas, totalIngresos, totalEgresos, efectivoEsperado, diferencia);
+                totalVentas, totalIngresos, totalEgresos, efectivoEsperado, diferencia, ventas);
+    }
+
+    private VentaResumenCajaResponse aVentaResumenCaja(Venta venta) {
+        String clienteNombre = venta.getClienteId() != null
+                ? clienteService.obtenerPorId(venta.getClienteId()).getNombre()
+                : null;
+
+        return new VentaResumenCajaResponse(
+                venta.getId(), venta.getFecha(), venta.getMedioPago(), venta.getTotal(),
+                nombreUsuario(venta.getUsuarioId()), clienteNombre);
     }
 
     private BigDecimal sumarPorTipo(List<MovimientoCaja> movimientos, TipoMovimientoCaja tipo) {

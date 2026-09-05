@@ -20,6 +20,7 @@ public record CajaResumenResponse(
         BigDecimal totalIngresos,
         BigDecimal totalEgresos,
         BigDecimal efectivoEsperado,
-        BigDecimal diferencia
+        BigDecimal diferencia,
+        List<VentaResumenCajaResponse> ventas
 ) {
 }

@@ -87,6 +87,14 @@ export function HistorialCajasPage() {
     { title: 'Total', dataIndex: 'total', render: (v: number) => formatoMoneda.format(v) },
   ];
 
+  const columnasVentas: ColumnsType<CajaResumen['ventas'][number]> = [
+    { title: 'Hora', dataIndex: 'fecha', render: (f: string) => new Date(f).toLocaleString('es-AR') },
+    { title: 'Vendedor', dataIndex: 'usuarioNombre' },
+    { title: 'Medio de pago', dataIndex: 'medioPago', render: etiquetaMedioPago },
+    { title: 'Cliente', dataIndex: 'clienteNombre', render: (v: string | null) => v ?? '—' },
+    { title: 'Total', dataIndex: 'total', render: (v: number) => formatoMoneda.format(v) },
+  ];
+
   return (
     <AppLayout>
       <Card title="Historial de cajas">
@@ -104,7 +112,7 @@ export function HistorialCajasPage() {
         open={modalAbierto}
         onCancel={() => setModalAbierto(false)}
         footer={null}
-        width={640}
+        width={760}
       >
         {cargandoResumen && (
           <div style={{ textAlign: 'center', padding: 32 }}>
@@ -119,6 +127,19 @@ export function HistorialCajasPage() {
               {resumen.fechaCierre && ` — cerrado ${new Date(resumen.fechaCierre).toLocaleString('es-AR')}`}
             </Typography.Paragraph>
 
+            <Typography.Title level={5}>Ventas del turno</Typography.Title>
+            <Table
+              columns={columnasVentas}
+              dataSource={resumen.ventas}
+              rowKey="id"
+              pagination={false}
+              size="small"
+              scroll={{ y: 240 }}
+              locale={{ emptyText: 'Sin ventas en este turno' }}
+              style={{ marginBottom: 16 }}
+            />
+
+            <Typography.Title level={5}>Resumen por medio de pago</Typography.Title>
             <Table
               columns={columnasMedioPago}
               dataSource={resumen.ventasPorMedioPago}

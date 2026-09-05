@@ -121,6 +121,14 @@ public class VentaService {
     }
 
     /**
+     * Ventas confirmadas de un turno puntual, de la más reciente a la más vieja. La usa el
+     * módulo de caja para mostrar el detalle de ventas en el resumen de un turno.
+     */
+    public List<Venta> listarPorCaja(Long cajaId) {
+        return ventaRepository.findByCajaIdOrderByFechaDesc(cajaId);
+    }
+
+    /**
      * Total vendido por cada (turno, vendedor) en un período — solo ventas con caja asignada.
      * La usa el módulo de comisiones para calcular la comisión de vendedores.
      */
