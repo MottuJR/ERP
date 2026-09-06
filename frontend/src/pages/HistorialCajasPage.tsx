@@ -4,13 +4,34 @@ import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
 import { listarHistorialCajas, obtenerResumenCaja } from '../api/caja';
 import { mensajeDeError } from '../api/client';
-import type { CajaHistorial, CajaResumen } from '../types';
+import type { CajaResumen, CajaHistorial, MedioPago, VentaPorMedioPago } from '../types';
 import { MEDIOS_PAGO } from '../types';
 
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
 function etiquetaMedioPago(medioPago: string) {
   return MEDIOS_PAGO.find((m) => m.value === medioPago)?.label ?? medioPago;
+}
+
+/**
+ * El total por medio de pago de un turno tiene que sumar ventas + cobros de cuenta corriente:
+ * una transferencia puede venir de cualquiera de los dos, y antes solo se mostraban las ventas
+ * (un turno donde todo el ingreso por transferencia fue un cobro de cuenta corriente no mostraba
+ * nada de transferencias acá).
+ */
+function combinarPorMedioPago(ventas: VentaPorMedioPago[], cobros: VentaPorMedioPago[]): VentaPorMedioPago[] {
+  const totales = new Map<MedioPago, VentaPorMedioPago>();
+
+  for (const fila of [...ventas, ...cobros]) {
+    const actual = totales.get(fila.medioPago) ?? { medioPago: fila.medioPago, total: 0, cantidad: 0 };
+    totales.set(fila.medioPago, {
+      medioPago: fila.medioPago,
+      total: actual.total + fila.total,
+      cantidad: actual.cantidad + fila.cantidad,
+    });
+  }
+
+  return Array.from(totales.values());
 }
 
 export function HistorialCajasPage() {
@@ -81,9 +102,9 @@ export function HistorialCajasPage() {
     },
   ];
 
-  const columnasMedioPago: ColumnsType<CajaResumen['ventasPorMedioPago'][number]> = [
+  const columnasMedioPago: ColumnsType<VentaPorMedioPago> = [
     { title: 'Medio de pago', dataIndex: 'medioPago', render: etiquetaMedioPago },
-    { title: 'Cantidad de ventas', dataIndex: 'cantidad' },
+    { title: 'Cantidad', dataIndex: 'cantidad' },
     { title: 'Total', dataIndex: 'total', render: (v: number) => formatoMoneda.format(v) },
   ];
 
@@ -163,13 +184,16 @@ export function HistorialCajasPage() {
             )}
 
             <Typography.Title level={5}>Resumen por medio de pago</Typography.Title>
+            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+              Incluye ventas y cobros de cuenta corriente de este turno.
+            </Typography.Text>
             <Table
               columns={columnasMedioPago}
-              dataSource={resumen.ventasPorMedioPago}
+              dataSource={combinarPorMedioPago(resumen.ventasPorMedioPago, resumen.cobrosPorMedioPago)}
               rowKey="medioPago"
               pagination={false}
               size="small"
-              locale={{ emptyText: 'Sin ventas en este turno' }}
+              locale={{ emptyText: 'Sin ventas ni cobros en este turno' }}
               style={{ marginBottom: 16 }}
             />
 
