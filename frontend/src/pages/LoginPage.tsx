@@ -47,7 +47,15 @@ export function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f5f5f5',
+        // Varios degradés superpuestos (no uno solo lineal) para que el naranja de marca tenga
+        // algo de profundidad en vez de un color plano — más luminoso arriba a la izquierda y
+        // abajo a la derecha, oscureciendo un poco hacia el resto.
+        background: `
+          radial-gradient(circle at 12% 15%, rgba(255, 213, 128, 0.6), transparent 45%),
+          radial-gradient(circle at 88% 20%, rgba(255, 154, 60, 0.5), transparent 50%),
+          radial-gradient(circle at 80% 90%, rgba(173, 74, 0, 0.45), transparent 55%),
+          linear-gradient(135deg, #ffb84d 0%, #fa8c16 45%, #d9600a 100%)
+        `,
       }}
     >
       <Card style={{ width: 360 }}>
