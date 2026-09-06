@@ -1,49 +1,29 @@
-import type { ComponentType } from 'react';
-import {
-  AppstoreOutlined,
-  AuditOutlined,
-  BarChartOutlined,
-  BookOutlined,
-  DollarOutlined,
-  HistoryOutlined,
-  InboxOutlined,
-  ShoppingCartOutlined,
-  ShoppingOutlined,
-  TeamOutlined,
-  ToolOutlined,
-  TruckOutlined,
-  UserOutlined,
-  WalletOutlined,
-} from '@ant-design/icons';
 import type { Rol } from '../types';
 
 export interface NavItem {
   key: string;
   label: string;
   roles: Rol[];
-  // Componente de ícono (no JSX): este archivo es .ts, no .tsx — AppLayout es quien lo instancia.
-  icon: ComponentType;
 }
 
 // Única fuente de verdad para qué roles pueden ver cada sección: la usan tanto el menú
 // (para no mostrar links a los que no tienen acceso) como las rutas (para bloquear el acceso
-// directo por URL) — así no hay forma de que queden desincronizados. El ícono es solo estético
-// (ayuda a separar visualmente un módulo de otro en el menú), no tiene ninguna otra lógica atada.
+// directo por URL) — así no hay forma de que queden desincronizados.
 export const NAV_ITEMS: NavItem[] = [
-  { key: '/caja', label: 'Caja', roles: ['DUENO', 'ENCARGADO', 'VENDEDOR'], icon: WalletOutlined },
-  { key: '/historial-cajas', label: 'Historial de cajas', roles: ['DUENO', 'ENCARGADO'], icon: HistoryOutlined },
-  { key: '/pos', label: 'Venta', roles: ['DUENO', 'ENCARGADO', 'VENDEDOR'], icon: ShoppingCartOutlined },
-  { key: '/productos', label: 'Productos', roles: ['DUENO', 'ENCARGADO'], icon: AppstoreOutlined },
-  { key: '/insumos', label: 'Insumos', roles: ['DUENO', 'ENCARGADO', 'PRODUCCION'], icon: InboxOutlined },
-  { key: '/recetas', label: 'Recetas', roles: ['DUENO', 'ENCARGADO', 'PRODUCCION'], icon: BookOutlined },
-  { key: '/produccion', label: 'Producción', roles: ['DUENO', 'ENCARGADO', 'PRODUCCION'], icon: ToolOutlined },
-  { key: '/proveedores', label: 'Proveedores', roles: ['DUENO', 'ENCARGADO'], icon: TruckOutlined },
-  { key: '/compras', label: 'Compras', roles: ['DUENO', 'ENCARGADO'], icon: ShoppingOutlined },
-  { key: '/clientes', label: 'Clientes', roles: ['DUENO', 'ENCARGADO'], icon: TeamOutlined },
-  { key: '/reportes', label: 'Reportes', roles: ['DUENO', 'ENCARGADO'], icon: BarChartOutlined },
-  { key: '/comisiones', label: 'Comisiones', roles: ['DUENO'], icon: DollarOutlined },
-  { key: '/auditoria', label: 'Auditoría', roles: ['DUENO'], icon: AuditOutlined },
-  { key: '/usuarios', label: 'Usuarios', roles: ['DUENO'], icon: UserOutlined },
+  { key: '/caja', label: 'Caja', roles: ['DUENO', 'ENCARGADO', 'VENDEDOR'] },
+  { key: '/historial-cajas', label: 'Historial de cajas', roles: ['DUENO', 'ENCARGADO'] },
+  { key: '/pos', label: 'Venta', roles: ['DUENO', 'ENCARGADO', 'VENDEDOR'] },
+  { key: '/productos', label: 'Productos', roles: ['DUENO', 'ENCARGADO'] },
+  { key: '/insumos', label: 'Insumos', roles: ['DUENO', 'ENCARGADO', 'PRODUCCION'] },
+  { key: '/recetas', label: 'Recetas', roles: ['DUENO', 'ENCARGADO', 'PRODUCCION'] },
+  { key: '/produccion', label: 'Producción', roles: ['DUENO', 'ENCARGADO', 'PRODUCCION'] },
+  { key: '/proveedores', label: 'Proveedores', roles: ['DUENO', 'ENCARGADO'] },
+  { key: '/compras', label: 'Compras', roles: ['DUENO', 'ENCARGADO'] },
+  { key: '/clientes', label: 'Clientes', roles: ['DUENO', 'ENCARGADO'] },
+  { key: '/reportes', label: 'Reportes', roles: ['DUENO', 'ENCARGADO'] },
+  { key: '/comisiones', label: 'Comisiones', roles: ['DUENO'] },
+  { key: '/auditoria', label: 'Auditoría', roles: ['DUENO'] },
+  { key: '/usuarios', label: 'Usuarios', roles: ['DUENO'] },
 ];
 
 // Destino de redirect cuando el usuario entra a una ruta que no le corresponde (o hace login).
