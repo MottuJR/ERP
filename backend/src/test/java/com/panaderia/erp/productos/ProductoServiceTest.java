@@ -83,6 +83,21 @@ class ProductoServiceTest {
     }
 
     @Test
+    void unProductoNoVendidoPorPesoPuedeTenerCodigoPLU() {
+        // Ej.: facturas, contadas por unidad pero pasadas por la balanza en modo "unidades" en
+        // vez de peso (ver EscaneoService) — no es exclusivo de productos vendidos por peso.
+        CrearProductoRequest request = new CrearProductoRequest("Facturas", 1L, TipoProducto.ELABORADO, false,
+                new BigDecimal("800.00"), UnidadMedida.UNIDAD, null, "54321", BigDecimal.ZERO);
+        when(categoriaService.obtenerPorId(1L)).thenReturn(categoria());
+        when(productoRepository.findByCodigoPLUConCategoria("54321")).thenReturn(Optional.empty());
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Producto producto = productoService.crear(request, EMAIL);
+
+        assertThat(producto.getCodigoPLU()).isEqualTo("54321");
+    }
+
+    @Test
     void noSePuedeCrearUnProductoConCodigoDeBarrasYaUsado() {
         when(productoRepository.findByCodigoBarrasConCategoria("7790000000001"))
                 .thenReturn(Optional.of(productoExistente(99L, "7790000000001")));

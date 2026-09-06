@@ -95,11 +95,14 @@ export function ProductosPage() {
 
   async function handleGuardar() {
     const values = await form.validateFields();
-    // Cada producto usa solo uno de los dos códigos, según cómo se vende (sección 5 del diseño).
+    // Un producto vendido por peso siempre necesita PLU (y no puede tener código de barras fijo,
+    // porque la balanza lo cambia en cada pesada). Uno que NO se vende por peso puede tener los
+    // dos: código de barras fijo, y/o un PLU si la balanza está configurada para imprimirle una
+    // cantidad de unidades en vez de un peso (ver EscaneoService — ej. facturas contadas así).
     const payload: ProductoPayload = {
       ...values,
       codigoBarras: values.seVendePorPeso ? null : values.codigoBarras || null,
-      codigoPLU: values.seVendePorPeso ? values.codigoPLU || null : null,
+      codigoPLU: values.codigoPLU || null,
       activo: productoEditando ? values.activo : undefined,
     };
 
@@ -169,7 +172,11 @@ export function ProductosPage() {
     },
     {
       title: 'Código',
-      render: (_, p) => (p.seVendePorPeso ? `PLU ${p.codigoPLU}` : p.codigoBarras || '—'),
+      render: (_, p) => {
+        if (p.seVendePorPeso) return `PLU ${p.codigoPLU}`;
+        const partes = [p.codigoBarras, p.codigoPLU ? `PLU ${p.codigoPLU}` : null].filter(Boolean);
+        return partes.length > 0 ? partes.join(' / ') : '—';
+      },
     },
     { title: 'Stock actual', dataIndex: 'stockActual' },
     {
@@ -293,15 +300,23 @@ export function ProductosPage() {
           {seVendePorPeso ? (
             <Form.Item
               name="codigoPLU"
-              label="Código PLU (etiqueta de balanza)"
+              label="Código PLU (etiqueta de balanza, en gramos)"
               rules={[{ required: true, message: 'Ingresá el código PLU' }]}
             >
               <Input />
             </Form.Item>
           ) : (
-            <Form.Item name="codigoBarras" label="Código de barras (opcional)">
-              <Input />
-            </Form.Item>
+            <>
+              <Form.Item name="codigoBarras" label="Código de barras (opcional)">
+                <Input />
+              </Form.Item>
+              <Form.Item
+                name="codigoPLU"
+                label="Código PLU (opcional — si la balanza está configurada para contar unidades, ej. facturas)"
+              >
+                <Input />
+              </Form.Item>
+            </>
           )}
 
           <Form.Item name="stockMinimo" label="Stock mínimo (alerta de stock crítico)" rules={[{ required: true }]}>

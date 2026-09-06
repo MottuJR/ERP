@@ -58,6 +58,20 @@ class EscaneoServiceTest {
     }
 
     @Test
+    void resuelveUnCodigoDeBalanzaEnModoUnidadesSinDividirElValor() {
+        // prefijo 21 (modo unidades, ej. facturas contadas en la balanza) + PLU 54321 + 00006
+        // unidades + dígito verificador
+        String codigoBalanzaUnidades = "2154321000069";
+        Producto facturas = productoPorUnidadConPLU("54321", "Facturas", new BigDecimal("800.00"));
+        when(productoService.obtenerPorCodigoPLU("54321")).thenReturn(facturas);
+
+        EscaneoService.ItemResuelto resuelto = escaneoService.resolver(codigoBalanzaUnidades, null);
+
+        assertThat(resuelto.producto()).isEqualTo(facturas);
+        assertThat(resuelto.cantidad()).isEqualByComparingTo("6");
+    }
+
+    @Test
     void resuelveUnCodigoDeBarrasFijoConCantidadUnoPorDefecto() {
         String codigoBarras = "7791234567890";
         Producto gaseosa = productoFijo(codigoBarras, "Gaseosa 500ml", new BigDecimal("1200.00"));
@@ -88,6 +102,11 @@ class EscaneoServiceTest {
     private Producto productoFijo(String codigoBarras, String nombre, BigDecimal precio) {
         return new Producto(nombre, categoriaFalsa(), TipoProducto.REVENTA,
                 false, precio, UnidadMedida.UNIDAD, codigoBarras, null, BigDecimal.ZERO);
+    }
+
+    private Producto productoPorUnidadConPLU(String plu, String nombre, BigDecimal precio) {
+        return new Producto(nombre, categoriaFalsa(), TipoProducto.ELABORADO,
+                false, precio, UnidadMedida.UNIDAD, null, plu, BigDecimal.ZERO);
     }
 
     private Categoria categoriaFalsa() {

@@ -10,16 +10,26 @@ import java.math.RoundingMode;
 /**
  * Interpreta lo que llega del lector láser en el POS.
  *
- * <p>Sigue la decisión de la sección 5 del documento de diseño: la balanza trabaja en
- * "modo peso" e imprime PLU + peso (sin precio). Para distinguir un código de balanza de
- * un código de barras fijo se usa el rango de prefijo 20-29 (uso interno de comercio en
- * Argentina, EAN-13 de 13 dígitos).
+ * <p>Sigue la decisión de la sección 5 del documento de diseño: la balanza imprime PLU +
+ * un valor (sin precio). Para distinguir un código de balanza de un código de barras fijo
+ * se usa el rango de prefijo 20-29 (uso interno de comercio en Argentina, EAN-13 de 13
+ * dígitos), con formato 2-5-5: 2 dígitos de prefijo + 5 de PLU + 5 del valor + dígito
+ * verificador.
  *
- * <p><b>Importante:</b> el reparto exacto de dígitos entre PLU y peso dentro del código
- * varía según el fabricante de la balanza. Este parseo (5 dígitos de PLU + 5 dígitos de
- * peso en gramos + dígito verificador) es el esquema más común, pero hay que confirmarlo
- * contra el manual del modelo de balanza elegido y ajustar {@code PLU_INICIO}/{@code
- * PLU_FIN}/{@code PESO_INICIO}/{@code PESO_FIN} si hace falta.
+ * <p>La balanza (confirmado contra el manual de la Kretz Report LT/LT Lite, menú
+ * Configuración &gt; Programar código de barras) puede imprimir ese valor de dos formas
+ * distintas según el prefijo configurado, porque no todo lo que pasa por la balanza se
+ * vende por peso — por ejemplo, facturas se cuentan por unidad aunque se pesen para
+ * contarlas más rápido:
+ * <ul>
+ *   <li>{@link #PREFIJO_PESABLE} (config. de fábrica de la balanza: {@code INI C.B.
+ *   PESABLE = 20}, {@code PESO EN C.BARRA = S}): el valor son gramos.</li>
+ *   <li>{@link #PREFIJO_UNIDADES} ({@code INI C.BARRA UNI = 21}, {@code UNID EN C.BARRA
+ *   = S}): el valor es directamente una cantidad de unidades, sin dividir.</li>
+ * </ul>
+ * Estos dos prefijos y el formato 2-5-5 son el acuerdo con el que hay que configurar la
+ * balanza real cuando esté disponible; si en la balanza real se terminan usando otros
+ * valores, alcanza con ajustar {@code PREFIJO_PESABLE}/{@code PREFIJO_UNIDADES} acá.
  */
 @Service
 public class EscaneoService {
@@ -28,10 +38,13 @@ public class EscaneoService {
     private static final int PREFIJO_MIN = 20;
     private static final int PREFIJO_MAX = 29;
 
+    private static final int PREFIJO_PESABLE = 20;
+    private static final int PREFIJO_UNIDADES = 21;
+
     private static final int PLU_INICIO = 2;
     private static final int PLU_FIN = 7;
-    private static final int PESO_INICIO = 7;
-    private static final int PESO_FIN = 12;
+    private static final int VALOR_INICIO = 7;
+    private static final int VALOR_FIN = 12;
 
     private final ProductoService productoService;
 
@@ -61,14 +74,16 @@ public class EscaneoService {
     }
 
     private ItemResuelto resolverPesoVariable(String codigo) {
+        int prefijo = Integer.parseInt(codigo.substring(0, 2));
         String plu = codigo.substring(PLU_INICIO, PLU_FIN);
-        String pesoEnGramos = codigo.substring(PESO_INICIO, PESO_FIN);
+        String valor = codigo.substring(VALOR_INICIO, VALOR_FIN);
 
         Producto producto = productoService.obtenerPorCodigoPLU(plu);
-        BigDecimal pesoEnKg = new BigDecimal(pesoEnGramos)
-                .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
+        BigDecimal cantidad = prefijo == PREFIJO_UNIDADES
+                ? new BigDecimal(valor)
+                : new BigDecimal(valor).divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
 
-        return new ItemResuelto(producto, pesoEnKg);
+        return new ItemResuelto(producto, cantidad);
     }
 
     public record ItemResuelto(Producto producto, BigDecimal cantidad) {

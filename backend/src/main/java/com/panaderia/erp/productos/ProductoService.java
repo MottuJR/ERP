@@ -149,6 +149,13 @@ public class ProductoService {
         return producto;
     }
 
+    /**
+     * Un producto vendido por peso siempre necesita un PLU (la balanza no puede imprimirle un
+     * código de barras fijo, porque el código cambia con cada pesada). Un producto NO vendido
+     * por peso también puede tener un PLU: la balanza (ver {@code EscaneoService}) puede
+     * configurarse para que, con ese prefijo, imprima directamente una cantidad de unidades en
+     * vez de un peso — por ejemplo, para contar facturas más rápido pesándolas en tanda.
+     */
     private void validarCodigos(boolean seVendePorPeso, String codigoBarras, String codigoPLU) {
         if (seVendePorPeso && !StringUtils.hasText(codigoPLU)) {
             throw new ValidacionNegocioException(
@@ -158,11 +165,6 @@ public class ProductoService {
         if (seVendePorPeso && StringUtils.hasText(codigoBarras)) {
             throw new ValidacionNegocioException(
                     "Un producto vendido por peso no debe tener código de barras fijo");
-        }
-
-        if (!seVendePorPeso && StringUtils.hasText(codigoPLU)) {
-            throw new ValidacionNegocioException(
-                    "El código PLU es exclusivo de productos vendidos por peso");
         }
     }
 

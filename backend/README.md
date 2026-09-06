@@ -88,7 +88,14 @@ Authorization: Bearer <token>
 | POST | `/api/ventas` | Confirma la venta: recibe el carrito (ítems por código escaneado o por `productoId`+`cantidad`), descuenta stock automáticamente y registra el `MovimientoStock` correspondiente |
 | GET | `/api/ventas/{id}` | Detalle de una venta |
 
-**Importante sobre el parseo de código de balanza:** `EscaneoService` asume un esquema de 13 dígitos (prefijo 20-29 + 5 dígitos de PLU + 5 dígitos de peso en gramos + dígito verificador), que es el más común en Argentina pero varía por fabricante. Hay que confirmarlo contra el manual de la balanza real antes de ir a producción — las constantes de parseo están todas juntas al principio de la clase.
+**Importante sobre el parseo de código de balanza:** `EscaneoService` asume un esquema de 13 dígitos (prefijo + 5 dígitos de PLU + 5 dígitos de valor + dígito verificador, formato "2-5-5"). Confirmado contra el manual de la **Kretz Report LT / LT Lite** (menú Configuración > Programar código de barras), la balanza puede imprimir ese valor de dos formas según el prefijo configurado — no todo lo que pasa por la balanza se vende por peso (ej. facturas, que se cuentan por unidad aunque se pesen para contarlas más rápido):
+
+| Prefijo (constante) | Config. en la balanza | Significado del valor |
+|---|---|---|
+| `PREFIJO_PESABLE` = 20 | `INI C.B. PESABLE = 20`, `PESO EN C.BARRA = S` | Gramos (se divide por 1000 → kg) |
+| `PREFIJO_UNIDADES` = 21 | `INI C.BARRA UNI = 21`, `UNID EN C.BARRA = S` | Unidades, directo (sin dividir) |
+
+Estos dos prefijos son el **acuerdo con el que hay que configurar la balanza real** cuando esté disponible (todavía no se probó contra hardware real). Si en la balanza real terminan usando otros valores, alcanza con ajustar `PREFIJO_PESABLE`/`PREFIJO_UNIDADES` en `EscaneoService` — las constantes de parseo están todas juntas al principio de la clase. Un producto no vendido por peso ahora puede tener un código PLU (antes estaba prohibido tanto en `ProductoService` como en un `CHECK` de la tabla `productos`, migración `V16`) para poder configurarlo en modo "unidades".
 
 ## Endpoints de producción
 
