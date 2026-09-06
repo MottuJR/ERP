@@ -17,7 +17,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <Layout style={{ minHeight: '100%' }}>
-      <Layout.Header style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+      <Layout.Header style={{ display: 'flex', alignItems: 'center', gap: 24, background: '#fa8c16' }}>
         <Typography.Title level={4} style={{ color: 'white', margin: 0, whiteSpace: 'nowrap' }}>
           Todo Rico
         </Typography.Title>
@@ -28,7 +28,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           selectedKeys={[location.pathname]}
           items={items}
           onClick={(e) => navigate(e.key)}
-          style={{ flex: 1, minWidth: 0 }}
+          style={{ flex: 1, minWidth: 0, background: 'transparent' }}
         />
 
         <Flex align="center" gap={12}>
