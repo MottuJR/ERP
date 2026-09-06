@@ -7,10 +7,12 @@ import com.panaderia.erp.comisiones.dto.ComisionVendedorResponse;
 import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
 import com.panaderia.erp.core.usuario.Usuario;
 import com.panaderia.erp.core.usuario.UsuarioRepository;
+import com.panaderia.erp.clientes.PagoCliente;
 import com.panaderia.erp.produccion.OrdenProduccion;
 import com.panaderia.erp.produccion.OrdenProduccionService;
 import com.panaderia.erp.productos.Producto;
 import com.panaderia.erp.productos.ProductoService;
+import com.panaderia.erp.ventas.Venta;
 import com.panaderia.erp.ventas.VentaService;
 import com.panaderia.erp.ventas.dto.VentaTurnoResumen;
 import org.springframework.stereotype.Service;
@@ -76,6 +78,30 @@ public class ComisionesService {
                         totalVendido.getOrDefault(t, BigDecimal.ZERO),
                         totalCobrado.getOrDefault(t, BigDecimal.ZERO)))
                 .toList();
+    }
+
+    /**
+     * Comisión total a pagar por un turno puntual (sumada entre todos los vendedores que
+     * operaron esa caja), para ofrecerla al momento de cerrarla. Usa las mismas ventas y cobros
+     * de cuenta corriente que ve el resumen de caja, agrupados por vendedor porque cada uno
+     * puede tener un porcentaje de comisión distinto.
+     */
+    public BigDecimal comisionTotalDeTurno(Long cajaId) {
+        Map<Long, BigDecimal> basePorUsuario = new LinkedHashMap<>();
+
+        for (Venta venta : ventaService.listarPorCaja(cajaId)) {
+            basePorUsuario.merge(venta.getUsuarioId(), venta.getTotal(), BigDecimal::add);
+        }
+        for (PagoCliente pago : cuentaCorrienteService.listarPorCaja(cajaId)) {
+            basePorUsuario.merge(pago.getUsuarioId(), pago.getMonto(), BigDecimal::add);
+        }
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (Map.Entry<Long, BigDecimal> entrada : basePorUsuario.entrySet()) {
+            Usuario usuario = obtenerUsuario(entrada.getKey());
+            total = total.add(calcularComision(entrada.getValue(), usuario.getPorcentajeComision()));
+        }
+        return total;
     }
 
     /**

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { apiClient } from './client';
-import type { Caja, CajaHistorial, CajaResumen, MovimientoCaja, TipoMovimientoCaja } from '../types';
+import type { Caja, CajaHistorial, CajaResumen, MedioPagoComision, MovimientoCaja, TipoMovimientoCaja } from '../types';
 
 export async function obtenerCajaActual(): Promise<Caja | null> {
   try {
@@ -19,9 +19,18 @@ export async function abrirCaja(montoInicial: number): Promise<Caja> {
   return data;
 }
 
-export async function cerrarCaja(id: number, montoFinal: number): Promise<Caja> {
-  const { data } = await apiClient.post<Caja>(`/api/caja/${id}/cerrar`, { montoFinal });
+export async function cerrarCaja(
+  id: number,
+  montoFinal: number,
+  comisionMedioPago?: MedioPagoComision | null,
+): Promise<Caja> {
+  const { data } = await apiClient.post<Caja>(`/api/caja/${id}/cerrar`, { montoFinal, comisionMedioPago });
   return data;
+}
+
+export async function obtenerComisionPendiente(id: number): Promise<number> {
+  const { data } = await apiClient.get<{ comision: number }>(`/api/caja/${id}/comision`);
+  return data.comision;
 }
 
 export async function listarMovimientos(id: number): Promise<MovimientoCaja[]> {

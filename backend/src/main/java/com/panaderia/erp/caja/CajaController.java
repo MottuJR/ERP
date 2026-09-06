@@ -5,6 +5,7 @@ import com.panaderia.erp.caja.dto.CajaHistorialResponse;
 import com.panaderia.erp.caja.dto.CajaResponse;
 import com.panaderia.erp.caja.dto.CajaResumenResponse;
 import com.panaderia.erp.caja.dto.CerrarCajaRequest;
+import com.panaderia.erp.caja.dto.ComisionPendienteResponse;
 import com.panaderia.erp.caja.dto.MovimientoCajaRequest;
 import com.panaderia.erp.caja.dto.MovimientoCajaResponse;
 import com.panaderia.erp.core.exception.RecursoNoEncontradoException;
@@ -67,7 +68,14 @@ public class CajaController {
     @PostMapping("/{id}/cerrar")
     public CajaResponse cerrar(@PathVariable Long id, @Valid @RequestBody CerrarCajaRequest request,
                                 Authentication authentication) {
-        return CajaResponse.from(cajaService.cerrarTurno(id, request.montoFinal(), authentication.getName()));
+        Caja caja = cajaService.cerrarTurno(id, request.montoFinal(), request.comisionMedioPago(),
+                authentication.getName());
+        return CajaResponse.from(caja);
+    }
+
+    @GetMapping("/{id}/comision")
+    public ComisionPendienteResponse comisionPendiente(@PathVariable Long id) {
+        return new ComisionPendienteResponse(cajaService.comisionPendiente(id));
     }
 
     @GetMapping("/{id}/movimientos")

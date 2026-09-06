@@ -183,6 +183,13 @@ export function HistorialCajasPage() {
               <strong>Egresos manuales:</strong> {formatoMoneda.format(resumen.totalEgresos)}
               <br />
               <strong>Monto inicial:</strong> {formatoMoneda.format(resumen.montoInicial)}
+              {resumen.comisionMedioPago && (
+                <>
+                  <br />
+                  <strong>Comisión pagada al cierre:</strong> {formatoMoneda.format(resumen.comisionMonto ?? 0)} (
+                  {resumen.comisionMedioPago === 'EFECTIVO' ? 'efectivo' : 'transferencia'})
+                </>
+              )}
             </Typography.Paragraph>
 
             <Typography.Paragraph>

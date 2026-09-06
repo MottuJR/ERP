@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Empty, Flex, Form, InputNumber, Input, Modal, Select, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Flex, Form, InputNumber, Input, Modal, Radio, Select, Table, Tag, Typography, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { AppLayout } from '../layout/AppLayout';
@@ -8,10 +8,11 @@ import {
   cerrarCaja,
   listarMovimientos,
   obtenerCajaActual,
+  obtenerComisionPendiente,
   registrarMovimiento,
 } from '../api/caja';
 import { mensajeDeError } from '../api/client';
-import type { Caja, MovimientoCaja } from '../types';
+import type { Caja, MedioPagoComision, MovimientoCaja } from '../types';
 
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
@@ -27,6 +28,9 @@ export function CajaPage() {
   const [cerrarAbierto, setCerrarAbierto] = useState(false);
   const [montoFinal, setMontoFinal] = useState<number | null>(0);
   const [cerrando, setCerrando] = useState(false);
+  const [comisionPendiente, setComisionPendiente] = useState(0);
+  const [comisionMedioPago, setComisionMedioPago] = useState<MedioPagoComision | ''>('');
+  const [cargandoComision, setCargandoComision] = useState(false);
 
   const [movimientoAbierto, setMovimientoAbierto] = useState(false);
   const [form] = Form.useForm<{ tipo: 'INGRESO' | 'EGRESO'; monto: number; concepto: string }>();
@@ -63,11 +67,25 @@ export function CajaPage() {
     }
   }
 
+  async function abrirModalCerrar() {
+    if (!caja) return;
+    setCerrarAbierto(true);
+    setComisionMedioPago('');
+    setCargandoComision(true);
+    try {
+      setComisionPendiente(await obtenerComisionPendiente(caja.id));
+    } catch (err) {
+      message.error(mensajeDeError(err, 'No se pudo calcular la comisión del turno'));
+    } finally {
+      setCargandoComision(false);
+    }
+  }
+
   async function handleCerrar() {
     if (!caja) return;
     setCerrando(true);
     try {
-      await cerrarCaja(caja.id, montoFinal ?? 0);
+      await cerrarCaja(caja.id, montoFinal ?? 0, comisionMedioPago || null);
       message.success('Caja cerrada');
       setCerrarAbierto(false);
       setMontoFinal(0);
@@ -146,7 +164,7 @@ export function CajaPage() {
                 <Button icon={<PlusOutlined />} onClick={() => setMovimientoAbierto(true)}>
                   Ingreso/egreso
                 </Button>
-                <Button danger onClick={() => setCerrarAbierto(true)}>
+                <Button danger onClick={abrirModalCerrar}>
                   Cerrar caja
                 </Button>
               </Flex>
@@ -199,6 +217,27 @@ export function CajaPage() {
           onPressEnter={handleCerrar}
           autoFocus
         />
+
+        {!cargandoComision && comisionPendiente > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <Typography.Text>
+              Comisión de este turno: <strong>{formatoMoneda.format(comisionPendiente)}</strong>
+            </Typography.Text>
+            <div style={{ marginTop: 8 }}>
+              <Typography.Text type="secondary">¿Cómo se le paga?</Typography.Text>
+              <br />
+              <Radio.Group
+                value={comisionMedioPago}
+                onChange={(e) => setComisionMedioPago(e.target.value)}
+                style={{ marginTop: 4 }}
+              >
+                <Radio value="">No pagar ahora</Radio>
+                <Radio value="EFECTIVO">Efectivo (se descuenta de esta caja)</Radio>
+                <Radio value="TRANSFERENCIA">Transferencia</Radio>
+              </Radio.Group>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <Modal

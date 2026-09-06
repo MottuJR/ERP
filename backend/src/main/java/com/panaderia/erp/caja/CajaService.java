@@ -9,6 +9,7 @@ import com.panaderia.erp.clientes.ClienteService;
 import com.panaderia.erp.clientes.CuentaCorrienteService;
 import com.panaderia.erp.clientes.PagoCliente;
 import com.panaderia.erp.clientes.dto.PagoPorMedioPagoResumen;
+import com.panaderia.erp.comisiones.ComisionesService;
 import com.panaderia.erp.core.auditoria.AccionAuditoria;
 import com.panaderia.erp.core.auditoria.AuditoriaService;
 import com.panaderia.erp.core.exception.ConflictoException;
@@ -39,6 +40,7 @@ public class CajaService {
     private final VentaService ventaService;
     private final ClienteService clienteService;
     private final CuentaCorrienteService cuentaCorrienteService;
+    private final ComisionesService comisionesService;
 
     public CajaService(CajaRepository cajaRepository,
                         MovimientoCajaRepository movimientoCajaRepository,
@@ -46,7 +48,8 @@ public class CajaService {
                         AuditoriaService auditoriaService,
                         VentaService ventaService,
                         ClienteService clienteService,
-                        CuentaCorrienteService cuentaCorrienteService) {
+                        CuentaCorrienteService cuentaCorrienteService,
+                        ComisionesService comisionesService) {
         this.cajaRepository = cajaRepository;
         this.movimientoCajaRepository = movimientoCajaRepository;
         this.usuarioRepository = usuarioRepository;
@@ -54,6 +57,15 @@ public class CajaService {
         this.ventaService = ventaService;
         this.clienteService = clienteService;
         this.cuentaCorrienteService = cuentaCorrienteService;
+        this.comisionesService = comisionesService;
+    }
+
+    /**
+     * Comisión que se ganaron los vendedores en este turno hasta ahora, para mostrarla antes de
+     * cerrar la caja y que se pueda elegir cómo pagarla.
+     */
+    public BigDecimal comisionPendiente(Long cajaId) {
+        return comisionesService.comisionTotalDeTurno(cajaId);
     }
 
     public Caja obtenerPorId(Long id) {
@@ -115,8 +127,12 @@ public class CajaService {
         BigDecimal totalVentas = ventasPorMedio.stream().map(VentaPorMedioPagoResumen::total).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalCobros = cobrosPorMedio.stream().map(PagoPorMedioPagoResumen::total).reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        BigDecimal comisionEnEfectivo = caja.getComisionMedioPago() == MedioPagoComision.EFECTIVO
+                ? caja.getComisionMonto() : BigDecimal.ZERO;
+
         BigDecimal efectivoEsperado = caja.getMontoInicial()
-                .add(totalEfectivoVentas).add(totalEfectivoCobros).add(totalIngresos).subtract(totalEgresos);
+                .add(totalEfectivoVentas).add(totalEfectivoCobros).add(totalIngresos).subtract(totalEgresos)
+                .subtract(comisionEnEfectivo);
         BigDecimal diferencia = caja.getMontoFinal() != null ? caja.getMontoFinal().subtract(efectivoEsperado) : null;
 
         List<VentaResumenCajaResponse> ventas = ventaService.listarPorCaja(cajaId).stream()
@@ -131,7 +147,8 @@ public class CajaService {
                 caja.getMontoInicial(), caja.getMontoFinal(), caja.getUsuarioId(), usuarioNombre, caja.getEstado(),
                 ventasPorMedio.stream().map(VentaPorMedioPagoDTO::from).toList(),
                 totalVentas, totalIngresos, totalEgresos, efectivoEsperado, diferencia, ventas,
-                cobrosPorMedio.stream().map(VentaPorMedioPagoDTO::fromPago).toList(), totalCobros, cobros);
+                cobrosPorMedio.stream().map(VentaPorMedioPagoDTO::fromPago).toList(), totalCobros, cobros,
+                caja.getComisionMedioPago(), caja.getComisionMonto());
     }
 
     private VentaResumenCajaResponse aVentaResumenCaja(Venta venta) {
@@ -175,17 +192,21 @@ public class CajaService {
     }
 
     @Transactional
-    public Caja cerrarTurno(Long cajaId, BigDecimal montoFinal, String emailUsuario) {
+    public Caja cerrarTurno(Long cajaId, BigDecimal montoFinal, MedioPagoComision comisionMedioPago, String emailUsuario) {
         Caja caja = obtenerPorId(cajaId);
 
         if (caja.getEstado() != EstadoCaja.ABIERTA) {
             throw new ValidacionNegocioException("La caja ya está cerrada");
         }
 
-        caja.cerrar(montoFinal);
+        BigDecimal comisionMonto = comisionMedioPago != null ? comisionesService.comisionTotalDeTurno(cajaId) : null;
+        caja.cerrar(montoFinal, comisionMedioPago, comisionMonto);
 
+        String detalleComision = comisionMedioPago != null
+                ? ", comisión %s pagada en %s".formatted(comisionMonto, comisionMedioPago)
+                : "";
         auditoriaService.registrar(emailUsuario, ENTIDAD, caja.getId(), AccionAuditoria.CERRAR_CAJA,
-                "Cierre con monto final %s".formatted(montoFinal));
+                "Cierre con monto final %s%s".formatted(montoFinal, detalleComision));
 
         return caja;
     }

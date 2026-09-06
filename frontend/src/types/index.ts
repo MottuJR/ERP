@@ -62,6 +62,7 @@ export const MEDIOS_PAGO: { value: MedioPago; label: string }[] = [
 
 export type EstadoCaja = 'ABIERTA' | 'CERRADA';
 export type TipoMovimientoCaja = 'INGRESO' | 'EGRESO';
+export type MedioPagoComision = 'EFECTIVO' | 'TRANSFERENCIA';
 
 export interface Caja {
   id: number;
@@ -136,6 +137,8 @@ export interface CajaResumen {
   cobrosPorMedioPago: VentaPorMedioPago[];
   totalCobros: number;
   cobros: PagoResumenCaja[];
+  comisionMedioPago: MedioPagoComision | null;
+  comisionMonto: number | null;
 }
 
 export interface EscaneoResponse {

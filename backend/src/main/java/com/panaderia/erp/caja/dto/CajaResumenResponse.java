@@ -1,6 +1,7 @@
 package com.panaderia.erp.caja.dto;
 
 import com.panaderia.erp.caja.EstadoCaja;
+import com.panaderia.erp.caja.MedioPagoComision;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -24,6 +25,8 @@ public record CajaResumenResponse(
         List<VentaResumenCajaResponse> ventas,
         List<VentaPorMedioPagoDTO> cobrosPorMedioPago,
         BigDecimal totalCobros,
-        List<PagoResumenCajaResponse> cobros
+        List<PagoResumenCajaResponse> cobros,
+        MedioPagoComision comisionMedioPago,
+        BigDecimal comisionMonto
 ) {
 }

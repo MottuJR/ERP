@@ -39,6 +39,13 @@ public class Caja {
     @Column(nullable = false, length = 20)
     private EstadoCaja estado;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "comision_medio_pago", length = 20)
+    private MedioPagoComision comisionMedioPago;
+
+    @Column(name = "comision_monto", precision = 12, scale = 2)
+    private BigDecimal comisionMonto;
+
     protected Caja() {
     }
 
@@ -77,9 +84,19 @@ public class Caja {
         return estado;
     }
 
-    public void cerrar(BigDecimal montoFinal) {
+    public MedioPagoComision getComisionMedioPago() {
+        return comisionMedioPago;
+    }
+
+    public BigDecimal getComisionMonto() {
+        return comisionMonto;
+    }
+
+    public void cerrar(BigDecimal montoFinal, MedioPagoComision comisionMedioPago, BigDecimal comisionMonto) {
         this.montoFinal = montoFinal;
         this.fechaCierre = Instant.now();
         this.estado = EstadoCaja.CERRADA;
+        this.comisionMedioPago = comisionMedioPago;
+        this.comisionMonto = comisionMonto;
     }
 }
