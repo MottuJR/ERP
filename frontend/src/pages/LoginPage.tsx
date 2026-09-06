@@ -52,7 +52,7 @@ export function LoginPage() {
     >
       <Card style={{ width: 360 }}>
         <Typography.Title level={3} style={{ textAlign: 'center', marginTop: 0 }}>
-          ERP Panadería
+          Todo Rico
         </Typography.Title>
 
         {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 16 }} />}

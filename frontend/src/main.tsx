@@ -7,7 +7,7 @@ import App from './App.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConfigProvider locale={esES}>
+    <ConfigProvider locale={esES} theme={{ token: { colorPrimary: '#fa8c16' } }}>
       <App />
     </ConfigProvider>
   </StrictMode>,

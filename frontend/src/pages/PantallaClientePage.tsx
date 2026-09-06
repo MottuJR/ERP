@@ -107,7 +107,7 @@ export function PantallaClientePage() {
         <>
           <div style={{ padding: '32px 48px 0' }}>
             <Typography.Title style={{ color: 'white', fontSize: '2.5vw', margin: 0 }}>
-              ERP Panadería
+              Todo Rico
             </Typography.Title>
           </div>
 

@@ -19,7 +19,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <Layout style={{ minHeight: '100%' }}>
       <Layout.Header style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
         <Typography.Title level={4} style={{ color: 'white', margin: 0, whiteSpace: 'nowrap' }}>
-          ERP Panadería
+          Todo Rico
         </Typography.Title>
 
         <Menu
