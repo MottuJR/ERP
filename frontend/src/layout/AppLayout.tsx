@@ -23,14 +23,21 @@ export function AppLayout({ children }: { children: ReactNode }) {
           Todo Rico
         </Typography.Title>
 
-        <Menu
-          theme="dark"
-          mode="horizontal"
-          selectedKeys={[location.pathname]}
-          items={items}
-          onClick={(e) => navigate(e.key)}
-          style={{ flex: 1, minWidth: 0, background: 'transparent' }}
-        />
+        {/* El menú nunca esconde módulos detrás de un "..." (con DUENO viendo los 14, ese
+            colapso automático de antd escondía algunos y a veces dejaba de poder abrirlo). En
+            vez de eso, el que scrollea horizontalmente es este contenedor — el Menu de adentro
+            se renderiza siempre completo (minWidth: max-content), así todos los módulos quedan
+            siempre clickeables, aunque haga falta deslizar para verlos. */}
+        <div className="menu-scroll" style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
+          <Menu
+            theme="dark"
+            mode="horizontal"
+            selectedKeys={[location.pathname]}
+            items={items}
+            onClick={(e) => navigate(e.key)}
+            style={{ minWidth: 'max-content', background: 'transparent' }}
+          />
+        </div>
 
         <Flex align="center" gap={12}>
           <Tag color="blue">{usuario?.rol}</Tag>

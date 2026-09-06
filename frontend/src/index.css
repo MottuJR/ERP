@@ -30,3 +30,19 @@ body {
 .ant-menu-horizontal.ant-menu-dark > .ant-menu-item::after {
   display: none;
 }
+
+/* Contenedor que scrollea el menú (ver AppLayout) en vez de dejar que antd esconda módulos
+   detrás de un "...". Barra fina y discreta, en vez del scrollbar grueso por default. */
+.menu-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
+}
+
+.menu-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.menu-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+}
