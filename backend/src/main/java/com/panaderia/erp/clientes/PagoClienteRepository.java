@@ -15,6 +15,8 @@ public interface PagoClienteRepository extends JpaRepository<PagoCliente, Long> 
 
     List<PagoCliente> findByCajaIdOrderByFechaDesc(Long cajaId);
 
+    List<PagoCliente> findByFechaBetween(Instant desde, Instant hasta);
+
     @Query("select coalesce(sum(p.monto), 0) from PagoCliente p where p.clienteId = :clienteId")
     BigDecimal sumMontoPorCliente(@Param("clienteId") Long clienteId);
 

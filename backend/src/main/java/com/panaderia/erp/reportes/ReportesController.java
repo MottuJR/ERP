@@ -2,6 +2,7 @@ package com.panaderia.erp.reportes;
 
 import com.panaderia.erp.reportes.dto.MargenProductoResponse;
 import com.panaderia.erp.reportes.dto.ProductoMasVendidoResponse;
+import com.panaderia.erp.reportes.dto.ReporteIngresosResponse;
 import com.panaderia.erp.reportes.dto.ReporteVentasResponse;
 import com.panaderia.erp.reportes.dto.StockCriticoResponse;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -30,6 +31,13 @@ public class ReportesController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return reportesService.reporteVentas(desde, hasta);
+    }
+
+    @GetMapping("/ingresos-por-medio-pago")
+    public ReporteIngresosResponse ingresosPorMedioPago(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return reportesService.ingresosPorMedioPago(desde, hasta);
     }
 
     @GetMapping("/productos-mas-vendidos")

@@ -309,6 +309,19 @@ export interface ReporteVentas {
   porDia: VentaDia[];
 }
 
+export interface IngresoDia {
+  fecha: string;
+  porMedioPago: Partial<Record<MedioPago, number>>;
+  total: number;
+}
+
+export interface ReporteIngresos {
+  desde: string;
+  hasta: string;
+  porDia: IngresoDia[];
+  totalesPorMedioPago: Partial<Record<MedioPago, number>>;
+}
+
 export interface ProductoMasVendido {
   productoId: number;
   productoNombre: string;

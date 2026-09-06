@@ -103,6 +103,14 @@ public class CuentaCorrienteService {
     }
 
     /**
+     * Todos los cobros de cuenta corriente (de cualquier cliente) en un período. La usa el
+     * módulo de reportes para sumarlos como ingreso real por medio de pago, junto a las ventas.
+     */
+    public List<PagoCliente> listarPagosEntrePeriodo(Instant desde, Instant hasta) {
+        return pagoClienteRepository.findByFechaBetween(desde, hasta);
+    }
+
+    /**
      * Compras (ventas) de un cliente en un período, de la más reciente a la más vieja.
      */
     public List<VentaClienteResponse> listarVentas(Long clienteId, Instant desde, Instant hasta) {

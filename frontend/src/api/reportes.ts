@@ -1,8 +1,15 @@
 import { apiClient } from './client';
-import type { MargenProducto, ProductoMasVendido, ReporteVentas, StockCritico } from '../types';
+import type { MargenProducto, ProductoMasVendido, ReporteIngresos, ReporteVentas, StockCritico } from '../types';
 
 export async function obtenerReporteVentas(desde: string, hasta: string): Promise<ReporteVentas> {
   const { data } = await apiClient.get<ReporteVentas>('/api/reportes/ventas', { params: { desde, hasta } });
+  return data;
+}
+
+export async function obtenerIngresosPorMedioPago(desde: string, hasta: string): Promise<ReporteIngresos> {
+  const { data } = await apiClient.get<ReporteIngresos>('/api/reportes/ingresos-por-medio-pago', {
+    params: { desde, hasta },
+  });
   return data;
 }
 
