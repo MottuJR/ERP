@@ -12,3 +12,21 @@ body,
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
+
+/* Cada módulo del menú principal como una "píldora" separada de sus vecinos, en vez de texto
+   corrido con un simple subrayado al estar activo — ver AppLayout. Antd genera sus estilos con
+   :where() (especificidad cero a propósito) así que estas reglas los pisan sin necesitar !important. */
+.ant-menu-horizontal.ant-menu-dark > .ant-menu-item {
+  margin-inline: 4px;
+  padding-inline: 14px;
+  border-radius: 999px;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.ant-menu-horizontal.ant-menu-dark > .ant-menu-item:hover {
+  transform: translateY(-1px);
+}
+
+.ant-menu-horizontal.ant-menu-dark > .ant-menu-item::after {
+  display: none;
+}

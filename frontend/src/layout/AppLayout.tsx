@@ -13,6 +13,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const items = NAV_ITEMS.filter((item) => hasRole(...item.roles)).map((item) => ({
     key: item.key,
     label: item.label,
+    icon: <item.icon />,
   }));
 
   return (
