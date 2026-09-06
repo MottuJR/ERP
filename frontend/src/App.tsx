@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { CajaPage } from './pages/CajaPage';
 import { HistorialCajasPage } from './pages/HistorialCajasPage';
 import { PosPage } from './pages/PosPage';
+import { PantallaClientePage } from './pages/PantallaClientePage';
 import { ProductosPage } from './pages/ProductosPage';
 import { InsumosPage } from './pages/InsumosPage';
 import { RecetasPage } from './pages/RecetasPage';
@@ -37,6 +38,9 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          {/* Sin auth a propósito: es una segunda ventana para el segundo monitor del mostrador,
+              no muestra nada que no vea ya el cliente parado ahí (ver PantallaClientePage). */}
+          <Route path="/pantalla-cliente" element={<PantallaClientePage />} />
           <Route path="/caja" element={protegida('/caja', <CajaPage />)} />
           <Route path="/historial-cajas" element={protegida('/historial-cajas', <HistorialCajasPage />)} />
           <Route path="/pos" element={protegida('/pos', <PosPage />)} />

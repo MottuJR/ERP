@@ -15,7 +15,7 @@ import {
   message,
 } from 'antd';
 import type { InputRef, RefSelectProps } from 'antd';
-import { DeleteOutlined, PlusOutlined, ScanOutlined } from '@ant-design/icons';
+import { DesktopOutlined, DeleteOutlined, PlusOutlined, ScanOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '../layout/AppLayout';
@@ -25,6 +25,7 @@ import { obtenerCajaActual } from '../api/caja';
 import { confirmarVenta, escanear, type ItemVentaPayload } from '../api/ventas';
 import { mensajeDeError } from '../api/client';
 import { MEDIOS_PAGO, type Caja, type Cliente, type MedioPago, type Producto } from '../types';
+import { CANAL_PANTALLA_CLIENTE, type ItemPantallaCliente, type MensajePantallaCliente } from '../pos/pantallaCliente';
 
 interface ItemCarrito {
   key: string;
@@ -80,6 +81,14 @@ export function PosPage() {
   function enfocarInputCodigo() {
     setTimeout(() => inputCodigoRef.current?.focus(), 0);
   }
+
+  // Canal de comunicación con la pantalla del cliente (segunda ventana, ver PantallaClientePage).
+  // No pasa por el backend, es puramente entre pestañas del mismo navegador. Se crea/cierra en
+  // un useEffect (no directo en el cuerpo del componente) para llevarse bien con el StrictMode
+  // de desarrollo, que monta-desmonta-remonta los efectos: si el canal se crea afuera, la
+  // primera "desmontada" simulada lo cierra para siempre y las siguientes postMessage tiran
+  // InvalidStateError.
+  const canalPantallaClienteRef = useRef<BroadcastChannel | null>(null);
 
   function cargarClientesConCuenta() {
     return listarClientes()
@@ -138,6 +147,60 @@ export function PosPage() {
     () => carrito.reduce((acc, item) => acc + (item.cantidad ?? 0) * item.precioUnitario, 0),
     [carrito],
   );
+
+  const itemsParaPantallaCliente = useMemo<ItemPantallaCliente[]>(
+    () =>
+      carrito.map((item) => ({
+        productoNombre: item.productoNombre,
+        cantidad: item.cantidad ?? 0,
+        seVendePorPeso: item.seVendePorPeso,
+        unidadMedida: item.unidadMedida,
+        precioUnitario: item.precioUnitario,
+        subtotal: (item.cantidad ?? 0) * item.precioUnitario,
+      })),
+    [carrito],
+  );
+
+  // Crea el canal al montar y lo cierra al desmontar — único lugar que toca el ciclo de vida
+  // del canal en sí (los demás efectos solo lo usan a través del ref).
+  useEffect(() => {
+    const canal = new BroadcastChannel(CANAL_PANTALLA_CLIENTE);
+    canalPantallaClienteRef.current = canal;
+    return () => {
+      canal.close();
+      canalPantallaClienteRef.current = null;
+    };
+  }, []);
+
+  // Cada cambio en el carrito (agregar/quitar ítem, cambiar cantidad) se transmite tal cual a la
+  // pantalla del cliente, si hay una abierta escuchando.
+  useEffect(() => {
+    canalPantallaClienteRef.current?.postMessage({
+      tipo: 'actualizar',
+      items: itemsParaPantallaCliente,
+      total,
+    } satisfies MensajePantallaCliente);
+  }, [itemsParaPantallaCliente, total]);
+
+  // Si la pantalla del cliente se abre (o se recarga) a mitad de una venta, pide el estado
+  // actual en vez de quedarse vacía hasta el próximo ítem escaneado.
+  useEffect(() => {
+    const canal = canalPantallaClienteRef.current;
+    if (!canal) return;
+
+    const onMessage = (event: MessageEvent<MensajePantallaCliente>) => {
+      if (event.data.tipo === 'solicitar-estado') {
+        canalPantallaClienteRef.current?.postMessage({
+          tipo: 'actualizar',
+          items: itemsParaPantallaCliente,
+          total,
+        } satisfies MensajePantallaCliente);
+      }
+    };
+
+    canal.addEventListener('message', onMessage);
+    return () => canal.removeEventListener('message', onMessage);
+  }, [itemsParaPantallaCliente, total]);
 
   async function handleEscanear() {
     const codigo = codigoInput.trim();
@@ -259,6 +322,10 @@ export function PosPage() {
       });
 
       message.success(`Venta #${venta.id} confirmada — total ${formatoMoneda.format(venta.total)}`);
+      canalPantallaClienteRef.current?.postMessage({
+        tipo: 'venta-confirmada',
+        total: venta.total,
+      } satisfies MensajePantallaCliente);
       setCarrito([]);
       setMedioPago('EFECTIVO');
       setClienteId(undefined);
@@ -416,7 +483,17 @@ export function PosPage() {
         </Col>
 
         <Col span={14}>
-          <Card title="Carrito">
+          <Card
+            title="Carrito"
+            extra={
+              <Button
+                icon={<DesktopOutlined />}
+                onClick={() => window.open('/pantalla-cliente', 'pantallaCliente', 'noopener')}
+              >
+                Pantalla del cliente
+              </Button>
+            }
+          >
             <Table
               columns={columnas}
               dataSource={carrito}
